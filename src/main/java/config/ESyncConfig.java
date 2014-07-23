@@ -2,8 +2,7 @@ package config;
 
 import org.aeonbits.owner.Config;
 
-@Config.Sources({ "file:~/.esync.conf",
-                  "file:/etc/esync.conf" })
+@Config.Sources({ "file:~/.esync.conf", "file:/etc/esync.conf" })
 public interface ESyncConfig extends Config {
 
     @Key("nuxeo.db.user")

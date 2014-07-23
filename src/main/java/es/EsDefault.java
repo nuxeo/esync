@@ -42,9 +42,8 @@ public class EsDefault implements Es {
 
     @Override
     public Document getDocument(String id) throws NoSuchElementException {
-        GetRequestBuilder getRequest = getClient()
-                .prepareGet(config.esIndex(), DOC_TYPE, id)
-                .setFields(ACL_FIELD, PATH_FIELD);
+        GetRequestBuilder getRequest = getClient().prepareGet(config.esIndex(),
+                DOC_TYPE, id).setFields(ACL_FIELD, PATH_FIELD);
         if (log.isDebugEnabled()) {
             log.debug(String
                     .format("Get path of doc: curl -XGET 'http://localhost:9200/%s/%s/%s?fields=%s'",
@@ -57,7 +56,7 @@ public class EsDefault implements Es {
         String acl[];
         try {
             Object[] aclArray = ret.getField(ACL_FIELD).getValues().toArray();
-            acl= Arrays.copyOf(aclArray, aclArray.length, String[].class);
+            acl = Arrays.copyOf(aclArray, aclArray.length, String[].class);
         } catch (NullPointerException e) {
             acl = Document.NO_ACL;
         }
@@ -66,29 +65,32 @@ public class EsDefault implements Es {
     }
 
     @Override
-    public void checkSameAcl(String[] acl, String path, List<String> excludePaths) {
+    public void checkSameAcl(String[] acl, String path,
+            List<String> excludePaths) {
         AndFilterBuilder filter = FilterBuilders.andFilter();
         // Looking for a different ACL
         if (Document.NO_ACL == acl) {
             filter.add(FilterBuilders.existsFilter(ACL_FIELD));
         } else {
-            filter.add(FilterBuilders.notFilter(FilterBuilders.termFilter(ACL_FIELD, acl)));
+            filter.add(FilterBuilders.notFilter(FilterBuilders.termFilter(
+                    ACL_FIELD, acl)));
         }
         // Starts with path
         filter.add(FilterBuilders.termFilter(CHILDREN_FIELD, path));
-        if (! excludePaths.isEmpty()) {
+        if (!excludePaths.isEmpty()) {
             // Excluding paths
             AndFilterBuilder excludeClause = FilterBuilders.andFilter();
             for (String excludePath : excludePaths) {
-                excludeClause.add(FilterBuilders.termFilter(CHILDREN_FIELD, excludePath));
+                excludeClause.add(FilterBuilders.termFilter(CHILDREN_FIELD,
+                        excludePath));
             }
             filter.add(FilterBuilders.notFilter(excludeClause));
         }
-        SearchRequestBuilder request = getClient().prepareSearch(
-                config.esIndex()).setTypes(DOC_TYPE)
+        SearchRequestBuilder request = getClient()
+                .prepareSearch(config.esIndex()).setTypes(DOC_TYPE)
                 .setSearchType(SearchType.DFS_QUERY_THEN_FETCH)
-                .setSize(config.maxResults()).addFields(ACL_FIELD, PATH_FIELD).setQuery(
-                        QueryBuilders.constantScoreQuery(filter));
+                .setSize(config.maxResults()).addFields(ACL_FIELD, PATH_FIELD)
+                .setQuery(QueryBuilders.constantScoreQuery(filter));
         logSearchRequest(request);
         SearchResponse response = request.execute().actionGet();
         logSearchResponse(response);
@@ -96,13 +98,14 @@ public class EsDefault implements Es {
         if (hits > 0) {
             log.error(String.format("%d invalid ACL found on ES", hits));
             for (SearchHit hit : response.getHits()) {
-                log.info("invalid acl for " + hit.field(PATH_FIELD).getValue().toString() + " " +
-                        hit.field(ACL_FIELD).getValues().toString() );
+                log.info("invalid acl for "
+                        + hit.field(PATH_FIELD).getValue().toString() + " "
+                        + hit.field(ACL_FIELD).getValues().toString());
             }
         }
     }
 
-    public Client getClient() {
+    private Client getClient() {
         if (client == null) {
             log.info("Connecting to an ES cluster");
             ImmutableSettings.Builder builder = ImmutableSettings
@@ -110,16 +113,14 @@ public class EsDefault implements Es {
                     .put("cluster.name", config.clusterName())
                     .put("client.transport.sniff", false);
             Settings settings = builder.build();
-            log.debug("Using settings: "
-                    + settings.toDelimitedString(','));
+            log.debug("Using settings: " + settings.toDelimitedString(','));
             TransportClient tClient = new TransportClient(settings);
             String[] addresses = config.addressList().split(",");
             for (String item : addresses) {
                 String[] address = item.split(":");
                 log.info("Add transport address: " + item);
                 try {
-                    InetAddress inet = InetAddress
-                            .getByName(address[0]);
+                    InetAddress inet = InetAddress.getByName(address[0]);
                     tClient.addTransportAddress(new InetSocketTransportAddress(
                             inet, Integer.parseInt(address[1])));
                 } catch (UnknownHostException e) {
@@ -141,8 +142,7 @@ public class EsDefault implements Es {
         if (log.isDebugEnabled()) {
             log.debug(String
                     .format("Search query: curl -XGET 'http://localhost:9200/%s/%s/_search?pretty' -d '%s'",
-                            config.esIndex(), DOC_TYPE,
-                            request.toString()));
+                            config.esIndex(), DOC_TYPE, request.toString()));
         }
     }
 

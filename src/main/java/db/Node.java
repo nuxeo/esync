@@ -8,7 +8,7 @@ public class Node {
 
     public final Document doc;
 
-    public List<Node> children = new ArrayList<Node>();
+    public final List<Node> children = new ArrayList<>();
 
     public Node(Document doc) {
         this.doc = doc;

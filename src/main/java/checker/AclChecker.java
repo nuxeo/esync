@@ -19,13 +19,12 @@ import db.Node;
 import es.Es;
 import es.EsDefault;
 
-
 public class AclChecker implements Runnable {
 
     private static final Logger log = LoggerFactory.getLogger(AclChecker.class);
 
-    private Db db;
-    private Es es;
+    private final Db db;
+    private final Es es;
 
     public AclChecker(ESyncConfig config) {
         db = new DbSql();
@@ -37,7 +36,8 @@ public class AclChecker implements Runnable {
     @Override
     public void run() {
         List<Document> docsWithAcl = db.getDocumentWithAcl();
-        log.info(String.format("%d documents hold an ACL", docsWithAcl.size()));
+        int aclDocumentCount = docsWithAcl.size();
+        log.info(String.format("%d documents hold an ACL", aclDocumentCount));
         compareWithEs(docsWithAcl);
         Node root = buildTree(docsWithAcl);
         printTree(root, 0);
@@ -45,13 +45,13 @@ public class AclChecker implements Runnable {
     }
 
     private void checkAclConsistencyRecursive(Node root) {
-        Queue<Node> queue = new LinkedList<Node>();
+        Queue<Node> queue = new LinkedList<>();
         queue.add(root);
         do {
             Node node = queue.poll();
             checkAclConsistency(node);
             queue.addAll(node.children);
-        } while (! queue.isEmpty());
+        } while (!queue.isEmpty());
     }
 
     private void checkAclConsistency(Node node) {
@@ -61,8 +61,8 @@ public class AclChecker implements Runnable {
         log.info("Check consistency for " + node.doc);
         String path = node.doc.path;
         String[] acl = node.doc.acl;
-        List<String> excludePath = new ArrayList<String>();
-        for (Node child: node.children) {
+        List<String> excludePath = new ArrayList<>();
+        for (Node child : node.children) {
             excludePath.add(child.doc.path);
         }
         es.checkSameAcl(acl, path, excludePath);
@@ -70,7 +70,7 @@ public class AclChecker implements Runnable {
 
     private Node buildTree(List<Document> documents) {
         sortDocumentsByPath(documents);
-        List<Node> nodes = new ArrayList<Node>();
+        List<Node> nodes = new ArrayList<>();
         Node root = new Node(null);
         for (Document doc : documents) {
             Node parent = null;
@@ -81,7 +81,8 @@ public class AclChecker implements Runnable {
                 String ancestorPath = potentialAncestor.doc.path;
                 if (path.startsWith(ancestorPath)) {
                     // the one with the longest path is the direct parent
-                    if (parent == null || ancestorPath.length() > parent.doc.path.length()) {
+                    if (parent == null
+                            || ancestorPath.length() > parent.doc.path.length()) {
                         parent = potentialAncestor;
                     }
                 }
@@ -127,13 +128,13 @@ public class AclChecker implements Runnable {
         if (parent.isRoot()) {
             System.out.println("ROOT");
         } else {
-            for (int i = 0; i<depth; i++) {
+            for (int i = 0; i < depth; i++) {
                 System.out.print("  ");
             }
             System.out.println(parent.doc.path + " " + parent.doc);
         }
         depth++;
-        for (Node child: parent.children) {
+        for (Node child : parent.children) {
             printTree(child, depth);
         }
         depth--;

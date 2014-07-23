@@ -14,9 +14,9 @@ import java.util.List;
 
 import org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import config.ESyncConfig;
-import org.slf4j.LoggerFactory;
 
 public class DbSql implements Db {
     private static final Logger log = LoggerFactory.getLogger(DbSql.class);
@@ -40,10 +40,10 @@ public class DbSql implements Db {
         try {
             ps = conn.prepareStatement(ACL_QUERY);
             ResultSet rs = ps.executeQuery();
-            if (! rs.next()) {
+            if (!rs.next()) {
                 ret = Collections.emptyList();
             } else {
-                ret = new ArrayList<Document>();
+                ret = new ArrayList<>();
                 do {
                     String[] acl = decodeAcl(rs.getString(2));
                     ret.add(new Document(rs.getString(1), acl));
@@ -58,14 +58,15 @@ public class DbSql implements Db {
         return ret;
     }
 
-    private String[] decodeAcl(String aclString) throws SQLException {
-        ArrayList<String> acl = new ArrayList<String>(Arrays.asList(StringUtils.split(aclString, ",")));
+    private String[] decodeAcl(String aclString) {
+        ArrayList<String> acl = new ArrayList<>(Arrays.asList(StringUtils
+                .split(aclString, ",")));
         // remove trailing -Everyone
         int lastAceIndex = acl.size() - 1;
         if (DENY_ALL.equals(acl.get(lastAceIndex))) {
             acl.remove(lastAceIndex);
         }
-        for (int i=0; i<acl.size(); i++) {
+        for (int i = 0; i < acl.size(); i++) {
             String ace = acl.get(i);
             if (ace.startsWith("-")) {
                 acl.set(i, UNSUPPORTED_ACL);
@@ -75,10 +76,12 @@ public class DbSql implements Db {
     }
 
     private Connection getDbConnection() {
-        log.info("Connect to database:" + config.dbUrl() + " from " + getHostName());
+        log.info("Connect to database:" + config.dbUrl() + " from "
+                + getHostName());
         try {
             Class.forName(config.dbDriver());
-            return DriverManager.getConnection(config.dbUrl(), config.dbUser(), config.dbPassword());
+            return DriverManager.getConnection(config.dbUrl(), config.dbUser(),
+                    config.dbPassword());
         } catch (SQLException e) {
             log.error(e.getMessage(), e);
             throw new IllegalArgumentException(e);

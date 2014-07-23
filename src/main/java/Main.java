@@ -1,11 +1,12 @@
 import java.io.IOException;
 import java.sql.SQLException;
 
-import checker.AclChecker;
-import config.ESyncConfig;
 import org.aeonbits.owner.ConfigFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import checker.AclChecker;
+import config.ESyncConfig;
 
 public class Main {
 
