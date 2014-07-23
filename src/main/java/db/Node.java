@@ -1,5 +1,6 @@
 package db;
 
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -15,5 +16,9 @@ public class Node {
 
     public void addChildren(Node node) {
         children.add(node);
+    }
+
+    public boolean isRoot() {
+        return doc == null;
     }
 }

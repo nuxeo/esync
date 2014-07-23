@@ -26,4 +26,8 @@ public interface ESyncConfig extends Config {
 
     @Key("elasticsearch.clusterName")
     String clusterName();
+
+    @DefaultValue("1000")
+    @Key("elasticsearch.maxResults")
+    int maxResults();
 }

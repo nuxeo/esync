@@ -1,5 +1,6 @@
 package es;
 
+import java.util.List;
 import java.util.NoSuchElementException;
 
 import config.ESyncConfig;
@@ -11,4 +12,5 @@ public interface Es {
 
     Document getDocument(String id) throws NoSuchElementException;
 
+    void checkSameAcl(String[] acl, String path, List<String> excludePath);
 }

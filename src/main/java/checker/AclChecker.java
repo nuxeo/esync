@@ -3,11 +3,13 @@ package checker;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.NoSuchElementException;
+import java.util.Queue;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import config.ESyncConfig;
 import db.Db;
@@ -20,7 +22,7 @@ import es.EsDefault;
 
 public class AclChecker implements Runnable {
 
-    private static final Log log = LogFactory.getLog(AclChecker.class);
+    private static final Logger log = LoggerFactory.getLogger(AclChecker.class);
 
     private Db db;
     private Es es;
@@ -38,8 +40,32 @@ public class AclChecker implements Runnable {
         log.info(String.format("%d documents hold an ACL", docsWithAcl.size()));
         compareWithEs(docsWithAcl);
         Node root = buildTree(docsWithAcl);
-
         printTree(root, 0);
+        checkAclConsistencyRecursive(root);
+    }
+
+    private void checkAclConsistencyRecursive(Node root) {
+        Queue<Node> queue = new LinkedList<Node>();
+        queue.add(root);
+        do {
+            Node node = queue.poll();
+            checkAclConsistency(node);
+            queue.addAll(node.children);
+        } while (! queue.isEmpty());
+    }
+
+    private void checkAclConsistency(Node node) {
+        if (node.isRoot()) {
+            return;
+        }
+        log.info("Check consistency for " + node.doc);
+        String path = node.doc.path;
+        String[] acl = node.doc.acl;
+        List<String> excludePath = new ArrayList<String>();
+        for (Node child: node.children) {
+            excludePath.add(child.doc.path);
+        }
+        es.checkSameAcl(acl, path, excludePath);
     }
 
     private Node buildTree(List<Document> documents) {
@@ -98,7 +124,7 @@ public class AclChecker implements Runnable {
     }
 
     private void printTree(Node parent, int depth) {
-        if (parent.doc == null) {
+        if (parent.isRoot()) {
             System.out.println("ROOT");
         } else {
             for (int i = 0; i<depth; i++) {
