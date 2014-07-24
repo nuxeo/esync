@@ -6,6 +6,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.NoSuchElementException;
 
+import org.apache.commons.lang.StringUtils;
 import org.elasticsearch.action.get.GetRequestBuilder;
 import org.elasticsearch.action.get.GetResponse;
 import org.elasticsearch.action.search.SearchRequestBuilder;
@@ -18,6 +19,7 @@ import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.transport.InetSocketTransportAddress;
 import org.elasticsearch.index.query.AndFilterBuilder;
 import org.elasticsearch.index.query.FilterBuilders;
+import org.elasticsearch.index.query.OrFilterBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.search.SearchHit;
 import org.slf4j.Logger;
@@ -70,7 +72,8 @@ public class EsDefault implements Es {
         AndFilterBuilder filter = FilterBuilders.andFilter();
         // Looking for a different ACL
         if (Document.NO_ACL == acl) {
-            filter.add(FilterBuilders.existsFilter(ACL_FIELD));
+            filter.add(FilterBuilders.notFilter(FilterBuilders.missingFilter(
+                    ACL_FIELD).nullValue(true)));
         } else {
             filter.add(FilterBuilders.notFilter(FilterBuilders.termFilter(
                     ACL_FIELD, acl)));
@@ -79,7 +82,7 @@ public class EsDefault implements Es {
         filter.add(FilterBuilders.termFilter(CHILDREN_FIELD, path));
         if (!excludePaths.isEmpty()) {
             // Excluding paths
-            AndFilterBuilder excludeClause = FilterBuilders.andFilter();
+            OrFilterBuilder excludeClause = FilterBuilders.orFilter();
             for (String excludePath : excludePaths) {
                 excludeClause.add(FilterBuilders.termFilter(CHILDREN_FIELD,
                         excludePath));
@@ -100,7 +103,8 @@ public class EsDefault implements Es {
             for (SearchHit hit : response.getHits()) {
                 log.info("invalid acl for "
                         + hit.field(PATH_FIELD).getValue().toString() + " "
-                        + hit.field(ACL_FIELD).getValues().toString());
+                        + hit.field(ACL_FIELD).getValues().toString()
+                        + " expecting " + StringUtils.join(acl, ","));
             }
         }
     }
