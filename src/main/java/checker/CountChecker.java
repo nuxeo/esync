@@ -1,7 +1,5 @@
 package checker;
 
-import event.InfoEvent;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -18,11 +16,14 @@ public class CountChecker extends AbstractChecker {
 
     @Override
     void check() {
-        post(new InfoEvent(String.format("Total number of documents in db: %d",
-                db.getTotalCountDocument())));
-        post(new InfoEvent(String.format("Total number of documents in es:: %d",
-                es.getTotalCountDocument())));
-        post(new InfoEvent("CountChecker End"));
+        postMessage(String.format("Total number of documents in db: %d",
+                db.getTotalCountDocument()));
+        postMessage(String.format("Total number of documents in es:: %d",
+                es.getTotalCountDocument()));
+    }
 
+    @Override
+    String getName() {
+        return "CountChecker";
     }
 }

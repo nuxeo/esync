@@ -31,11 +31,16 @@ public class AclChecker extends AbstractChecker {
     void check() {
         List<Document> docsWithAcl = db.getDocumentWithAcl();
         int aclDocumentCount = docsWithAcl.size();
-        post(new InfoEvent(String.format("%d documents hold an ACL", aclDocumentCount)));
+        postMessage(String.format("%d documents hold an ACL", aclDocumentCount));
         compareWithEs(docsWithAcl);
         Node root = buildTree(docsWithAcl);
         printTree(root, 0);
         checkAclConsistencyRecursive(root);
+    }
+
+    @Override
+    String getName() {
+        return "AclChecker";
     }
 
     private void checkAclConsistencyRecursive(Node root) {
