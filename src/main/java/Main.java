@@ -40,14 +40,10 @@ public class Main {
 
     private static void registerListener() {
         eventBus = new EventBus();
-        InfoListener infoListener = new InfoListener();
-        eventBus.register(infoListener);
-        TrailingListener trailingListener = new TrailingListener();
-        eventBus.register(trailingListener);
-        MissingListener missingListener = new MissingListener();
-        eventBus.register(missingListener);
-        DiffListener diffListener = new DiffListener();
-        eventBus.register(diffListener);
+        eventBus.register(new InfoListener());
+        eventBus.register(new TrailingListener());
+        eventBus.register(new MissingListener());
+        eventBus.register(new DiffListener());
     }
 
 }

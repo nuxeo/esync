@@ -9,10 +9,9 @@ import java.util.NoSuchElementException;
 import java.util.Queue;
 
 import com.google.common.eventbus.EventBus;
-import listener.DiffEvent;
-import listener.InfoEvent;
-import listener.MissingEvent;
-import org.elasticsearch.search.aggregations.bucket.missing.Missing;
+import event.DiffEvent;
+import event.InfoEvent;
+import event.MissingEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -111,7 +110,7 @@ public class AclChecker extends AbstractChecker {
                 continue;
             }
             if (!doc.equals(esDoc)) {
-                post(new DiffEvent(doc, esDoc, "ACL diff found") );
+                post(new DiffEvent(doc, esDoc, "ACL diff found"));
             }
             doc.merge(esDoc);
         }
