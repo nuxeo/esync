@@ -6,9 +6,7 @@ import db.DbSql;
 import es.Es;
 import es.EsDefault;
 
-/**
- * @since 5.9.2
- */
+
 public abstract class AbstractChecker implements Runnable {
 
     protected final ESyncConfig config;
