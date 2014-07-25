@@ -43,6 +43,7 @@ public class Main {
         for (Runnable checker: checkers) {
             pool.execute(checker);
         }
+        pool.shutdown();
     }
 
     private static void registerListener() {
