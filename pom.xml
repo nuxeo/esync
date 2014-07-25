@@ -13,17 +13,12 @@
   </properties>
 
   <dependencies>
-    <dependency>
-      <groupId>org.slf4j</groupId>
-      <artifactId>slf4j-api</artifactId>
-      <version>1.7.7</version>
-    </dependency>
-    <dependency>
-      <groupId>org.slf4j</groupId>
-      <artifactId>slf4j-log4j12</artifactId>
-      <version>1.7.7</version>
-    </dependency>
-    <dependency>
+   <dependency>
+      <groupId>log4j</groupId>
+      <artifactId>log4j</artifactId>
+      <version>1.2.17</version>
+  </dependency>
+   <dependency>
       <groupId>commons-lang</groupId>
       <artifactId>commons-lang</artifactId>
       <version>2.6</version>
@@ -53,8 +48,67 @@
       <artifactId>elasticsearch</artifactId>
       <version>${elasticsearch.version}</version>
     </dependency>
-
+   <dependency>
+      <groupId>co.paralleluniverse</groupId>
+      <artifactId>quasar-core</artifactId>
+      <version>0.5.0</version>
+      <scope>compile</scope>
+   </dependency>
+    <dependency>
+      <groupId>co.paralleluniverse</groupId>
+      <artifactId>capsule</artifactId>
+      <version>0.5.0</version>
+      <scope>compile</scope>
+      <optional>true</optional>
+    </dependency>
   </dependencies>
-
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <version>3.1</version>
+        <configuration>
+          <source>1.7</source>
+          <target>1.7</target>
+        </configuration>
+      </plugin>
+      <plugin>
+        <artifactId>maven-assembly-plugin</artifactId>
+        <version>2.4</version>
+        <configuration>
+          <archive>
+            <manifest>
+              <mainClass>Capsule</mainClass>
+              <classpathPrefix>lib</classpathPrefix>
+              <addClasspath>true</addClasspath>
+              <addDefaultImplementationEntries>true</addDefaultImplementationEntries>
+              <addDefaultSpecificationEntries>true</addDefaultSpecificationEntries>
+            </manifest>
+            <manifestEntries>
+              <Application-Class>Main</Application-Class>
+              <Min-Java-Version>1.7.0</Min-Java-Version>
+              <JVM-Args></JVM-Args>
+              <System-Properties></System-Properties>
+              <Java-Agents>co.paralleluniverse:quasar-core:0.5.0</Java-Agents>
+            </manifestEntries>
+          </archive>
+          <descriptors>
+            <descriptor>src/main/assembly/capsule-full.xml</descriptor>
+            <descriptor>src/main/assembly/capsule.xml</descriptor>
+          </descriptors>
+        </configuration>
+        <executions>
+          <execution>
+            <id>make-assembly</id>
+            <phase>package</phase>
+            <goals>
+              <goal>single</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
+  </build>
 
 </project>

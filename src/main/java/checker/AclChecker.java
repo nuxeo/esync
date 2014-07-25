@@ -19,22 +19,16 @@ import db.Node;
 import es.Es;
 import es.EsDefault;
 
-public class AclChecker implements Runnable {
+public class AclChecker extends AbstractChecker {
 
     private static final Logger log = LoggerFactory.getLogger(AclChecker.class);
 
-    private final Db db;
-    private final Es es;
-
     public AclChecker(ESyncConfig config) {
-        db = new DbSql();
-        db.initialize(config);
-        es = new EsDefault();
-        es.initialize(config);
+        super(config);
     }
 
     @Override
-    public void run() {
+    void check() {
         List<Document> docsWithAcl = db.getDocumentWithAcl();
         int aclDocumentCount = docsWithAcl.size();
         log.info(String.format("%d documents hold an ACL", aclDocumentCount));

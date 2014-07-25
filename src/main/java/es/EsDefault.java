@@ -7,6 +7,10 @@ import java.util.List;
 import java.util.NoSuchElementException;
 
 import org.apache.commons.lang.StringUtils;
+import org.elasticsearch.action.ActionRequestBuilder;
+import org.elasticsearch.action.ActionResponse;
+import org.elasticsearch.action.count.CountRequestBuilder;
+import org.elasticsearch.action.count.CountResponse;
 import org.elasticsearch.action.get.GetRequestBuilder;
 import org.elasticsearch.action.get.GetResponse;
 import org.elasticsearch.action.search.SearchRequestBuilder;
@@ -109,9 +113,26 @@ public class EsDefault implements Es {
         }
     }
 
+    @Override
+    public void close() {
+        if (client != null) {
+            client.close();
+            client = null;
+        }
+    }
+
+    @Override
+    public long getTotalCountDocument() {
+        CountRequestBuilder request = getClient().prepareCount(config.esIndex()).setTypes(DOC_TYPE).setQuery(QueryBuilders.matchAllQuery());
+        logSearchRequest(request);
+        CountResponse response = request.execute().actionGet();
+        logSearchResponse(response);
+        return response.getCount();
+    }
+
     private Client getClient() {
         if (client == null) {
-            log.info("Connecting to an ES cluster");
+            log.debug("Connecting to an ES cluster");
             ImmutableSettings.Builder builder = ImmutableSettings
                     .settingsBuilder()
                     .put("cluster.name", config.clusterName())
@@ -122,7 +143,7 @@ public class EsDefault implements Es {
             String[] addresses = config.addressList().split(",");
             for (String item : addresses) {
                 String[] address = item.split(":");
-                log.info("Add transport address: " + item);
+                log.debug("Add transport address: " + item);
                 try {
                     InetAddress inet = InetAddress.getByName(address[0]);
                     tClient.addTransportAddress(new InetSocketTransportAddress(
@@ -136,13 +157,13 @@ public class EsDefault implements Es {
         return client;
     }
 
-    private void logSearchResponse(SearchResponse response) {
+    private void logSearchResponse(ActionResponse response) {
         if (log.isDebugEnabled()) {
             log.debug("Response: " + response.toString());
         }
     }
 
-    private void logSearchRequest(SearchRequestBuilder request) {
+    private void logSearchRequest(ActionRequestBuilder request) {
         if (log.isDebugEnabled()) {
             log.debug(String
                     .format("Search query: curl -XGET 'http://localhost:9200/%s/%s/_search?pretty' -d '%s'",
