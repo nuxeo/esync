@@ -1,0 +1,17 @@
+package listener;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.google.common.eventbus.Subscribe;
+
+public class TrailingListener {
+    private static final Logger log = LoggerFactory
+            .getLogger(TrailingListener.class);
+
+    @Subscribe
+    public void handleEvent(TrailingEvent event) {
+        log.info(String.format("REMOVE: %s, %s", event.getDocument(),
+                event.getMessage()));
+    }
+}

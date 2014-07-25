@@ -8,6 +8,11 @@ import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Queue;
 
+import com.google.common.eventbus.EventBus;
+import listener.DiffEvent;
+import listener.InfoEvent;
+import listener.MissingEvent;
+import org.elasticsearch.search.aggregations.bucket.missing.Missing;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -19,15 +24,15 @@ public class AclChecker extends AbstractChecker {
 
     private static final Logger log = LoggerFactory.getLogger(AclChecker.class);
 
-    public AclChecker(ESyncConfig config) {
-        super(config);
+    public AclChecker(ESyncConfig config, EventBus eventBus) {
+        super(config, eventBus);
     }
 
     @Override
     void check() {
         List<Document> docsWithAcl = db.getDocumentWithAcl();
         int aclDocumentCount = docsWithAcl.size();
-        log.info(String.format("%d documents hold an ACL", aclDocumentCount));
+        post(new InfoEvent(String.format("%d documents hold an ACL", aclDocumentCount)));
         compareWithEs(docsWithAcl);
         Node root = buildTree(docsWithAcl);
         printTree(root, 0);
@@ -48,7 +53,6 @@ public class AclChecker extends AbstractChecker {
         if (node.isRoot()) {
             return;
         }
-        log.info("Check consistency for " + node.doc);
         String path = node.doc.path;
         String[] acl = node.doc.acl;
         List<String> excludePath = new ArrayList<>();
@@ -103,12 +107,11 @@ public class AclChecker extends AbstractChecker {
             try {
                 esDoc = es.getDocument(doc.id);
             } catch (NoSuchElementException e) {
-                log.error(doc + ": missing in Elasticsearch");
+                post(new MissingEvent(doc, "not found in es"));
                 continue;
             }
             if (!doc.equals(esDoc)) {
-                log.error(doc + ": ACL diff found with es: " + esDoc);
-
+                post(new DiffEvent(doc, esDoc, "ACL diff found") );
             }
             doc.merge(esDoc);
         }
