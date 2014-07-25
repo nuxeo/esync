@@ -29,4 +29,8 @@ public interface ESyncConfig extends Config {
     @DefaultValue("1000")
     @Key("elasticsearch.maxResults")
     int maxResults();
+
+    @DefaultValue("1")
+    @Key("checker.pool.size")
+    int getPoolSize();
 }
