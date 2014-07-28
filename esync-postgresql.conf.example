@@ -1,0 +1,10 @@
+nuxeo.db.user=nuxeo
+nuxeo.db.password=nuxeo
+nuxeo.db.driver=org.postgresql.Driver
+nuxeo.db.jdbc.url=jdbc:postgresql://localhost:5432/nuxeo
+
+elasticsearch.addressList=localhost:9300
+elasticsearch.indexName=nuxeo
+elasticsearch.clusterName=elasticsearch
+
+checker.pool.size=10

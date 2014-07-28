@@ -1,7 +1,11 @@
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.Properties;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -32,13 +36,32 @@ public class Main {
     private final static ConsoleReporter reporter = ConsoleReporter
             .forRegistry(registry).convertRatesTo(TimeUnit.SECONDS)
             .convertDurationsTo(TimeUnit.MILLISECONDS).build();
+    private static ESyncConfig config;
 
     public static void main(String[] args) throws SQLException, IOException {
         log.info("Starting esync...");
+        config = getConfig(args);
         registerListener();
         runCheckers();
         log.info("End of esync");
         reportMetrics();
+    }
+
+    private static ESyncConfig getConfig(String[] args) {
+        ESyncConfig ret;
+        if (args.length > 0) {
+            Properties props = new Properties();
+            try {
+                props.load(new FileInputStream(args[0]));
+            } catch (IOException e) {
+                log.error("Wrong file " + args[0] + e.getMessage(), e);
+                throw new IllegalArgumentException(e);
+            }
+            ret = ConfigFactory.create(ESyncConfig.class, props);
+        } else {
+            ret = ConfigFactory.create(ESyncConfig.class);
+        }
+        return ret;
     }
 
     private static void reportMetrics() {
@@ -47,7 +70,6 @@ public class Main {
     }
 
     private static void runCheckers() {
-        ESyncConfig config = ConfigFactory.create(ESyncConfig.class);
         List<Runnable> checkers = new ArrayList<>();
         checkers.add(new AclChecker(config, eventBus));
         checkers.add(new CountChecker(config, eventBus));
