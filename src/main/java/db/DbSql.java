@@ -17,24 +17,32 @@ import org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.codahale.metrics.MetricRegistry;
+import com.codahale.metrics.SharedMetricRegistries;
+import com.codahale.metrics.Timer;
+import com.codahale.metrics.annotation.Timed;
+
 import config.ESyncConfig;
+import db.dialect.Dialect;
+import db.dialect.DialectFactory;
 
 public class DbSql implements Db {
     private static final Logger log = LoggerFactory.getLogger(DbSql.class);
-
-    private static final String ACL_QUERY = "SELECT id, nx_get_read_acl(id) FROM (SELECT DISTINCT(id) FROM acls) AS foo";
-    private static final String COUNT_QUERY = "SELECT count(1) AS count FROM misc";
-    private static final String TYPE_QUERY = "SELECT primarytype, count(1) AS count FROM hierarchy WHERE NOT isproperty GROUP BY primarytype ORDER BY 2 DESC";
-
     private static final String DENY_ALL = "-Everyone";
     private static final String UNSUPPORTED_ACL = "_UNSUPPORTED_ACL_";
 
     private ESyncConfig config;
     private Connection dbConnection;
+    private Dialect dialect;
+    private final static MetricRegistry registry = SharedMetricRegistries
+            .getOrCreate("main");
+    private final Timer aclTimer = registry.timer("esync.db.acl");
+    private final Timer countTimer = registry.timer("esync.db.count");
 
     @Override
     public void initialize(ESyncConfig config) {
         this.config = config;
+        dialect = DialectFactory.create(config.dbDriver());
     }
 
     @Override
@@ -49,12 +57,20 @@ public class DbSql implements Db {
         }
     }
 
-    @Override
     public List<Document> getDocumentWithAcl() {
+        final Timer.Context context = aclTimer.time();
+        try {
+            return getDocumentWithAclTimed();
+        } finally {
+            context.stop();
+        }
+    }
+
+    private List<Document> getDocumentWithAclTimed() {
         List<Document> ret;
         PreparedStatement ps;
         try {
-            ps = getDbConnection().prepareStatement(ACL_QUERY);
+            ps = getDbConnection().prepareStatement(dialect.getAclQuery());
             ResultSet rs = ps.executeQuery();
             if (!rs.next()) {
                 ret = Collections.emptyList();
@@ -73,13 +89,21 @@ public class DbSql implements Db {
         return ret;
     }
 
-    @Override
     public long getTotalCountDocument() {
+        final Timer.Context context = countTimer.time();
+        try {
+            return getTotalCountDocumentTimed();
+        } finally {
+            context.stop();
+        }
+    }
+
+    private long getTotalCountDocumentTimed() {
         int count = -1;
         try {
             Statement stmt = getDbConnection().createStatement();
-            ResultSet ret = stmt.executeQuery(COUNT_QUERY);
-            while(ret.next()) {
+            ResultSet ret = stmt.executeQuery(dialect.getCountQuery());
+            while (ret.next()) {
                 count = ret.getInt("count");
             }
         } catch (SQLException e) {
@@ -111,8 +135,8 @@ public class DbSql implements Db {
                     + getHostName());
             try {
                 Class.forName(config.dbDriver());
-                dbConnection = DriverManager.getConnection(config.dbUrl(), config.dbUser(),
-                        config.dbPassword());
+                dbConnection = DriverManager.getConnection(config.dbUrl(),
+                        config.dbUser(), config.dbPassword());
             } catch (SQLException e) {
                 log.error(e.getMessage(), e);
                 throw new IllegalArgumentException(e);

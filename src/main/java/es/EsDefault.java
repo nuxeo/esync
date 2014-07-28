@@ -29,6 +29,10 @@ import org.elasticsearch.search.SearchHit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.codahale.metrics.MetricRegistry;
+import com.codahale.metrics.SharedMetricRegistries;
+import com.codahale.metrics.Timer;
+
 import config.ESyncConfig;
 import db.Document;
 
@@ -40,6 +44,10 @@ public class EsDefault implements Es {
     private static final String CHILDREN_FIELD = "ecm:path.children";
     private ESyncConfig config;
     private TransportClient client;
+    private final static MetricRegistry registry = SharedMetricRegistries
+            .getOrCreate("main");
+    private final Timer aclTimer = registry.timer("esync.es.acl");
+    private final Timer countTimer = registry.timer("esync.es.count");
 
     @Override
     public void initialize(ESyncConfig config) {
@@ -73,6 +81,16 @@ public class EsDefault implements Es {
     @Override
     public void checkSameAcl(String[] acl, String path,
             List<String> excludePaths) {
+        final Timer.Context context = aclTimer.time();
+        try {
+            checkSameAclTimed(acl, path, excludePaths);
+        } finally {
+            context.stop();
+        }
+    }
+
+    private void checkSameAclTimed(String[] acl, String path,
+                             List<String> excludePaths) {
         AndFilterBuilder filter = FilterBuilders.andFilter();
         // Looking for a different ACL
         if (Document.NO_ACL == acl) {
@@ -123,7 +141,18 @@ public class EsDefault implements Es {
 
     @Override
     public long getTotalCountDocument() {
-        CountRequestBuilder request = getClient().prepareCount(config.esIndex()).setTypes(DOC_TYPE).setQuery(QueryBuilders.matchAllQuery());
+        final Timer.Context context = countTimer.time();
+        try {
+            return getTotalCountDocumentTimed();
+        } finally {
+            context.stop();
+        }
+    }
+
+    private long getTotalCountDocumentTimed() {
+        CountRequestBuilder request = getClient()
+                .prepareCount(config.esIndex()).setTypes(DOC_TYPE)
+                .setQuery(QueryBuilders.matchAllQuery());
         logSearchRequest(request);
         CountResponse response = request.execute().actionGet();
         logSearchResponse(response);

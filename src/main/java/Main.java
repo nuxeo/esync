@@ -4,34 +4,46 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
-import checker.AbstractChecker;
-import checker.CountChecker;
-
-import com.google.common.eventbus.EventBus;
 import listener.DiffListener;
 import listener.InfoListener;
 import listener.MissingListener;
 import listener.TrailingListener;
+
 import org.aeonbits.owner.ConfigFactory;
-
-
-import checker.AclChecker;
-import config.ESyncConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import sun.security.krb5.Config;
 
+import checker.AclChecker;
+import checker.CountChecker;
+
+import com.codahale.metrics.ConsoleReporter;
+import com.codahale.metrics.MetricRegistry;
+import com.codahale.metrics.SharedMetricRegistries;
+import com.google.common.eventbus.EventBus;
+import config.ESyncConfig;
 
 public class Main {
     private static final Logger log = LoggerFactory.getLogger(Main.class);
     private static EventBus eventBus;
+    private final static MetricRegistry registry = SharedMetricRegistries
+            .getOrCreate("main");
+    private final static ConsoleReporter reporter = ConsoleReporter
+            .forRegistry(registry).convertRatesTo(TimeUnit.SECONDS)
+            .convertDurationsTo(TimeUnit.MILLISECONDS).build();
 
     public static void main(String[] args) throws SQLException, IOException {
         log.info("Starting esync...");
         registerListener();
         runCheckers();
         log.info("End of esync");
+        reportMetrics();
+    }
+
+    private static void reportMetrics() {
+        reporter.report();
+        reporter.stop();
     }
 
     private static void runCheckers() {
@@ -39,11 +51,17 @@ public class Main {
         List<Runnable> checkers = new ArrayList<>();
         checkers.add(new AclChecker(config, eventBus));
         checkers.add(new CountChecker(config, eventBus));
-        ExecutorService pool = Executors.newFixedThreadPool(config.getPoolSize());
-        for (Runnable checker: checkers) {
+        ExecutorService pool = Executors.newFixedThreadPool(config
+                .getPoolSize());
+        for (Runnable checker : checkers) {
             pool.execute(checker);
         }
         pool.shutdown();
+        try {
+            pool.awaitTermination(1000, TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+            log.error(e.getMessage(), e);
+        }
     }
 
     private static void registerListener() {
