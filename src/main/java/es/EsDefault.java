@@ -4,6 +4,7 @@ import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.NoSuchElementException;
 
 import org.apache.commons.lang.StringUtils;
@@ -26,6 +27,7 @@ import org.elasticsearch.index.query.FilterBuilders;
 import org.elasticsearch.index.query.OrFilterBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.search.SearchHit;
+import org.elasticsearch.search.aggregations.AggregationBuilders;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -47,7 +49,10 @@ public class EsDefault implements Es {
     private final static MetricRegistry registry = SharedMetricRegistries
             .getOrCreate("main");
     private final Timer aclTimer = registry.timer("esync.es.acl");
-    private final Timer countTimer = registry.timer("esync.es.count");
+    private final Timer cardinalityTimer = registry
+            .timer("esync.es.cardinality");
+    private final Timer typeCardinalityTimer = registry
+            .timer("esync.es.type.cardinality");
 
     @Override
     public void initialize(ESyncConfig config) {
@@ -90,7 +95,7 @@ public class EsDefault implements Es {
     }
 
     private void checkSameAclTimed(String[] acl, String path,
-                             List<String> excludePaths) {
+            List<String> excludePaths) {
         AndFilterBuilder filter = FilterBuilders.andFilter();
         // Looking for a different ACL
         if (Document.NO_ACL == acl) {
@@ -140,16 +145,40 @@ public class EsDefault implements Es {
     }
 
     @Override
-    public long getTotalCountDocument() {
-        final Timer.Context context = countTimer.time();
+    public long getCardinality() {
+        final Timer.Context context = cardinalityTimer.time();
         try {
-            return getTotalCountDocumentTimed();
+            return getCardinalityTimed();
         } finally {
             context.stop();
         }
     }
 
-    private long getTotalCountDocumentTimed() {
+    @Override
+    public Map<String, Integer> getTypeCardinality() {
+        final Timer.Context context = typeCardinalityTimer.time();
+        try {
+            return getTypeCardinalityTimed();
+        } finally {
+            context.stop();
+        }
+    }
+
+    private Map<String, Integer> getTypeCardinalityTimed() {
+        SearchRequestBuilder request = getClient()
+                .prepareSearch(config.esIndex()).setSearchType(SearchType.COUNT)
+                .setQuery(QueryBuilders.matchAllQuery())
+                .addAggregation(
+                        AggregationBuilders.cardinality("primaryType").field(
+                                "ecm:primaryType"));
+        logSearchRequest(request);
+        SearchResponse response = request.execute().actionGet();
+        logSearchResponse(response);
+        return null;
+
+    }
+
+    private long getCardinalityTimed() {
         CountRequestBuilder request = getClient()
                 .prepareCount(config.esIndex()).setTypes(DOC_TYPE)
                 .setQuery(QueryBuilders.matchAllQuery());

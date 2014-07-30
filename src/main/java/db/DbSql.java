@@ -11,7 +11,9 @@ import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger;
@@ -20,7 +22,6 @@ import org.slf4j.LoggerFactory;
 import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.SharedMetricRegistries;
 import com.codahale.metrics.Timer;
-import com.codahale.metrics.annotation.Timed;
 
 import config.ESyncConfig;
 import db.dialect.Dialect;
@@ -37,7 +38,8 @@ public class DbSql implements Db {
     private final static MetricRegistry registry = SharedMetricRegistries
             .getOrCreate("main");
     private final Timer aclTimer = registry.timer("esync.db.acl");
-    private final Timer countTimer = registry.timer("esync.db.count");
+    private final Timer cardinalityTimer = registry.timer("esync.db.cardinality");
+    private final Timer typeCardinalityTimer = registry.timer("esync.db.type.cardinality");
 
     @Override
     public void initialize(ESyncConfig config) {
@@ -89,23 +91,26 @@ public class DbSql implements Db {
         return ret;
     }
 
-    public long getTotalCountDocument() {
-        final Timer.Context context = countTimer.time();
+    @Override
+    public long getCardinality() {
+        final Timer.Context context = cardinalityTimer.time();
         try {
-            return getTotalCountDocumentTimed();
+            return getCardinalityTimed();
         } finally {
             context.stop();
         }
     }
 
-    private long getTotalCountDocumentTimed() {
+    private long getCardinalityTimed() {
         int count = -1;
         try {
-            Statement stmt = getDbConnection().createStatement();
-            ResultSet ret = stmt.executeQuery(dialect.getCountQuery());
-            while (ret.next()) {
-                count = ret.getInt("count");
+            Statement st = getDbConnection().createStatement();
+            ResultSet rs = st.executeQuery(dialect.getCountQuery());
+            while (rs.next()) {
+                count = rs.getInt("count");
             }
+            rs.close();
+            st.close();
         } catch (SQLException e) {
             throw new RuntimeException(e.getMessage(), e);
         }
@@ -127,6 +132,34 @@ public class DbSql implements Db {
             }
         }
         return acl.toArray(new String[acl.size()]);
+    }
+
+    @Override
+    public Map<String, Integer> getTypeCardinality() {
+        final Timer.Context context = typeCardinalityTimer.time();
+        try {
+            return getTypeCardinalityTimed();
+        } finally {
+            context.stop();
+        }
+    }
+
+    private Map<String, Integer> getTypeCardinalityTimed() {
+        Map ret = new HashMap<String, Integer>();
+        try {
+            Statement st = getDbConnection().createStatement();
+            ResultSet rs = st.executeQuery(dialect.getTypeQuery());
+            while (rs.next()) {
+                String primaryType = rs.getString("primarytype");
+                int count = rs.getInt("count");
+                ret.put(primaryType, count);
+            }
+            rs.close();
+            st.close();
+        } catch (SQLException e) {
+            throw new RuntimeException(e.getMessage(), e);
+        }
+        return ret;
     }
 
     private Connection getDbConnection() {
@@ -158,5 +191,7 @@ public class DbSql implements Db {
         }
         return hostname;
     }
+
+
 
 }

@@ -1,6 +1,7 @@
 package db;
 
 import java.util.List;
+import java.util.Map;
 
 import config.ESyncConfig;
 
@@ -18,5 +19,7 @@ public interface Db {
     /**
      * Get the total number of non system documents
      */
-    long getTotalCountDocument();
+    long getCardinality();
+
+    Map<String,Integer> getTypeCardinality();
 }

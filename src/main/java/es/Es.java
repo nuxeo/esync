@@ -1,6 +1,7 @@
 package es;
 
 import java.util.List;
+import java.util.Map;
 import java.util.NoSuchElementException;
 
 import config.ESyncConfig;
@@ -16,5 +17,7 @@ public interface Es {
 
     void checkSameAcl(String[] acl, String path, List<String> excludePath);
 
-    long getTotalCountDocument();
+    long getCardinality();
+
+    Map<String,Integer> getTypeCardinality();
 }
