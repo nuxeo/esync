@@ -3,11 +3,10 @@ package es;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.NoSuchElementException;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.commons.lang.StringUtils;
 import org.elasticsearch.action.ActionRequestBuilder;
@@ -48,18 +47,60 @@ public class EsDefault implements Es {
     private static final String PATH_FIELD = "ecm:path";
     private static final String CHILDREN_FIELD = "ecm:path.children";
     private ESyncConfig config;
-    private TransportClient client;
+    // client is thread safe and shared between checkers
+    private static TransportClient client;
+    private final static AtomicInteger clients = new AtomicInteger(0);
     private final static MetricRegistry registry = SharedMetricRegistries
             .getOrCreate("main");
-    private final Timer aclTimer = registry.timer("esync.es.acl");
-    private final Timer cardinalityTimer = registry
+    private final static Timer aclTimer = registry.timer("esync.es.acl");
+    private final static Timer cardinalityTimer = registry
             .timer("esync.es.cardinality");
-    private final Timer typeCardinalityTimer = registry
+    private final static Timer typeCardinalityTimer = registry
             .timer("esync.es.type.cardinality");
 
     @Override
     public void initialize(ESyncConfig config) {
         this.config = config;
+        open();
+    }
+
+    private void open() {
+        synchronized (EsDefault.class) {
+            if (clients.incrementAndGet() == 1) {
+                log.info("Connecting to ES cluster");
+                ImmutableSettings.Builder builder = ImmutableSettings
+                        .settingsBuilder()
+                        .put("cluster.name", config.clusterName())
+                        .put("client.transport.sniff", false);
+                Settings settings = builder.build();
+                log.debug("Using settings: " + settings.toDelimitedString(','));
+                TransportClient tClient = new TransportClient(settings);
+                String[] addresses = config.addressList().split(",");
+                for (String item : addresses) {
+                    String[] address = item.split(":");
+                    log.debug("Add transport address: " + item);
+                    try {
+                        InetAddress inet = InetAddress.getByName(address[0]);
+                        tClient.addTransportAddress(new InetSocketTransportAddress(
+                                inet, Integer.parseInt(address[1])));
+                    } catch (UnknownHostException e) {
+                        log.error("Unable to resolve host " + address[0], e);
+                    }
+                }
+                client = tClient;
+            }
+        }
+    }
+
+    @Override
+    public void close() {
+        if (clients.decrementAndGet() == 0) {
+            if (client != null) {
+                log.info("Closing es connection");
+                client.close();
+                client = null;
+            }
+        }
     }
 
     @Override
@@ -140,14 +181,6 @@ public class EsDefault implements Es {
     }
 
     @Override
-    public void close() {
-        if (client != null) {
-            client.close();
-            client = null;
-        }
-    }
-
-    @Override
     public long getCardinality() {
         final Timer.Context context = cardinalityTimer.time();
         try {
@@ -197,29 +230,6 @@ public class EsDefault implements Es {
     }
 
     private Client getClient() {
-        if (client == null) {
-            log.debug("Connecting to an ES cluster");
-            ImmutableSettings.Builder builder = ImmutableSettings
-                    .settingsBuilder()
-                    .put("cluster.name", config.clusterName())
-                    .put("client.transport.sniff", false);
-            Settings settings = builder.build();
-            log.debug("Using settings: " + settings.toDelimitedString(','));
-            TransportClient tClient = new TransportClient(settings);
-            String[] addresses = config.addressList().split(",");
-            for (String item : addresses) {
-                String[] address = item.split(":");
-                log.debug("Add transport address: " + item);
-                try {
-                    InetAddress inet = InetAddress.getByName(address[0]);
-                    tClient.addTransportAddress(new InetSocketTransportAddress(
-                            inet, Integer.parseInt(address[1])));
-                } catch (UnknownHostException e) {
-                    log.error("Unable to resolve host " + address[0], e);
-                }
-            }
-            client = tClient;
-        }
         return client;
     }
 
