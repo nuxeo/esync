@@ -8,9 +8,8 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
-import checker.CardinalityChecker;
-import checker.TypeCardinalityChecker;
 import listener.DiffListener;
+import listener.ErrorListener;
 import listener.InfoListener;
 import listener.MissingListener;
 import listener.TrailingListener;
@@ -20,6 +19,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import checker.AclChecker;
+import checker.CardinalityChecker;
+import checker.TypeCardinalityChecker;
 
 import com.codahale.metrics.ConsoleReporter;
 import com.codahale.metrics.MetricRegistry;
@@ -80,7 +81,14 @@ public class Main {
         }
         pool.shutdown();
         try {
-            pool.awaitTermination(1000, TimeUnit.SECONDS);
+            if (pool.awaitTermination(config.getTimeoutMinutes(),
+                    TimeUnit.MINUTES)) {
+                log.info("All checkers terminated");
+            } else {
+                log.error(String.format(
+                        "Timeout on worker pool after %d minutes.",
+                        config.getTimeoutMinutes()));
+            }
         } catch (InterruptedException e) {
             log.error(e.getMessage(), e);
         }
@@ -92,6 +100,7 @@ public class Main {
         eventBus.register(new TrailingListener());
         eventBus.register(new MissingListener());
         eventBus.register(new DiffListener());
+        eventBus.register(new ErrorListener());
     }
 
 }

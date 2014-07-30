@@ -33,4 +33,8 @@ public interface ESyncConfig extends Config {
     @DefaultValue("1")
     @Key("checker.pool.size")
     int getPoolSize();
+
+    @DefaultValue("60")
+    @Key("checker.pool.timeoutMinutes")
+    long getTimeoutMinutes();
 }

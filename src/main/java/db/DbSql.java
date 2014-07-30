@@ -11,9 +11,8 @@ import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 
 import org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger;
@@ -38,8 +37,10 @@ public class DbSql implements Db {
     private final static MetricRegistry registry = SharedMetricRegistries
             .getOrCreate("main");
     private final Timer aclTimer = registry.timer("esync.db.acl");
-    private final Timer cardinalityTimer = registry.timer("esync.db.cardinality");
-    private final Timer typeCardinalityTimer = registry.timer("esync.db.type.cardinality");
+    private final Timer cardinalityTimer = registry
+            .timer("esync.db.cardinality");
+    private final Timer typeCardinalityTimer = registry
+            .timer("esync.db.type.cardinality");
 
     @Override
     public void initialize(ESyncConfig config) {
@@ -135,7 +136,7 @@ public class DbSql implements Db {
     }
 
     @Override
-    public Map<String, Integer> getTypeCardinality() {
+    public LinkedHashMap<String, Long> getTypeCardinality() {
         final Timer.Context context = typeCardinalityTimer.time();
         try {
             return getTypeCardinalityTimed();
@@ -144,14 +145,14 @@ public class DbSql implements Db {
         }
     }
 
-    private Map<String, Integer> getTypeCardinalityTimed() {
-        Map ret = new HashMap<String, Integer>();
+    private LinkedHashMap<String, Long> getTypeCardinalityTimed() {
+        LinkedHashMap ret = new LinkedHashMap<String, Long>();
         try {
             Statement st = getDbConnection().createStatement();
             ResultSet rs = st.executeQuery(dialect.getTypeQuery());
             while (rs.next()) {
                 String primaryType = rs.getString("primarytype");
-                int count = rs.getInt("count");
+                long count = rs.getLong("count");
                 ret.put(primaryType, count);
             }
             rs.close();
@@ -191,7 +192,5 @@ public class DbSql implements Db {
         }
         return hostname;
     }
-
-
 
 }

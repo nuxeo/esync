@@ -1,7 +1,13 @@
 package checker;
 
+import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Set;
 
+import com.esotericsoftware.kryo.util.IdentityMap;
+import com.google.common.collect.MapDifference;
+import com.google.common.collect.Maps;
+import event.DiffEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -20,10 +26,32 @@ public class TypeCardinalityChecker extends AbstractChecker {
 
     @Override
     void check() {
-        Map<String, Integer> esTypes = es.getTypeCardinality();
-        Map<String, Integer> dbTypes = db.getTypeCardinality();
-        for (String key : dbTypes.keySet()) {
-            postMessage(String.format("db %s: %d", key, dbTypes.get(key)));
+        LinkedHashMap<String, Long> esTypes = es.getTypeCardinality();
+        LinkedHashMap<String, Long> dbTypes = db.getTypeCardinality();
+        MapDifference<String, Long> diff = Maps.difference(dbTypes, esTypes);
+        if (diff.areEqual()) {
+            postMessage("Found same type cadinality on db and es");
+        }
+        for(String key : diff.entriesOnlyOnLeft().keySet()) {
+            post(new ErrorEvent(String.format("Missing type on ES: %s (%d)", key, dbTypes.get(key))));
+        }
+        for(String key : diff.entriesOnlyOnRight().keySet()) {
+            post(new ErrorEvent(String.format("Unknown type on ES not present on db: %s (%d)", key, dbTypes.get(key))));
+        }
+        if (! diff.areEqual()) {
+            postMessage("Difference found in types cadinality");
+            for(String key : diff.entriesDiffering().keySet()) {
+                long esCount = 0;
+                long dbCount = 0;
+                if (esTypes.containsKey(key)) {
+                    esCount = esTypes.get(key);
+                }
+                if (dbTypes.containsKey(key)) {
+                    dbCount = dbTypes.get(key);
+                }
+                post(new ErrorEvent(String.format("Different number of %s documents: %d in db vs %d in es",
+                        key, dbCount, esCount)));
+            }
         }
     }
 

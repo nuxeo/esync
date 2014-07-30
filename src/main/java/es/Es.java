@@ -1,7 +1,7 @@
 package es;
 
+import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.NoSuchElementException;
 
 import config.ESyncConfig;
@@ -19,5 +19,5 @@ public interface Es {
 
     long getCardinality();
 
-    Map<String,Integer> getTypeCardinality();
+    LinkedHashMap<String, Long> getTypeCardinality();
 }

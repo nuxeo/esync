@@ -1,7 +1,7 @@
 package db;
 
+import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 
 import config.ESyncConfig;
 
@@ -21,5 +21,5 @@ public interface Db {
      */
     long getCardinality();
 
-    Map<String,Integer> getTypeCardinality();
+    LinkedHashMap<String, Long> getTypeCardinality();
 }

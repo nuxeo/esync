@@ -3,6 +3,8 @@ package es;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
@@ -28,6 +30,7 @@ import org.elasticsearch.index.query.OrFilterBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.search.SearchHit;
 import org.elasticsearch.search.aggregations.AggregationBuilders;
+import org.elasticsearch.search.aggregations.bucket.terms.Terms;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -155,7 +158,7 @@ public class EsDefault implements Es {
     }
 
     @Override
-    public Map<String, Integer> getTypeCardinality() {
+    public LinkedHashMap<String, Long> getTypeCardinality() {
         final Timer.Context context = typeCardinalityTimer.time();
         try {
             return getTypeCardinalityTimed();
@@ -164,17 +167,22 @@ public class EsDefault implements Es {
         }
     }
 
-    private Map<String, Integer> getTypeCardinalityTimed() {
+    private LinkedHashMap<String, Long> getTypeCardinalityTimed() {
+        LinkedHashMap ret = new LinkedHashMap<String, Long>();
         SearchRequestBuilder request = getClient()
                 .prepareSearch(config.esIndex()).setSearchType(SearchType.COUNT)
                 .setQuery(QueryBuilders.matchAllQuery())
                 .addAggregation(
-                        AggregationBuilders.cardinality("primaryType").field(
+                        AggregationBuilders.terms("primaryType").field(
                                 "ecm:primaryType"));
         logSearchRequest(request);
         SearchResponse response = request.execute().actionGet();
         logSearchResponse(response);
-        return null;
+        Terms terms = response.getAggregations().get("primaryType");
+        for (Terms.Bucket term : terms.getBuckets()) {
+            ret.put(term.getKey(), term.getDocCount());
+        }
+        return ret;
 
     }
 
