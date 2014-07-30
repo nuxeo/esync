@@ -10,29 +10,16 @@ import com.google.common.eventbus.EventBus;
 import config.ESyncConfig;
 import event.ErrorEvent;
 
-public class CountChecker extends AbstractChecker {
+public class CardinalityChecker extends AbstractChecker {
     private static final Logger log = LoggerFactory
-            .getLogger(CountChecker.class);
+            .getLogger(CardinalityChecker.class);
 
-    public CountChecker(ESyncConfig config, EventBus eventBus) {
+    public CardinalityChecker(ESyncConfig config, EventBus eventBus) {
         super(config, eventBus);
     }
 
     @Override
     void check() {
-        checkCardinality();
-        checkTypeCardinality();
-    }
-
-    private void checkTypeCardinality() {
-        Map<String, Integer> esTypes = es.getTypeCardinality();
-        Map<String, Integer> dbTypes = db.getTypeCardinality();
-        for (String key : dbTypes.keySet()) {
-            postMessage(String.format("db %s: %d", key, dbTypes.get(key)));
-        }
-    }
-
-    private void checkCardinality() {
         long esCount = es.getCardinality();
         postMessage(String.format("Total number of documents in es:: %d",
                 esCount));
@@ -50,6 +37,6 @@ public class CountChecker extends AbstractChecker {
 
     @Override
     String getName() {
-        return "CountChecker";
+        return "CardinalityChecker";
     }
 }

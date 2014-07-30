@@ -1,15 +1,15 @@
-import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
+import checker.CardinalityChecker;
+import checker.TypeCardinalityChecker;
 import listener.DiffListener;
 import listener.InfoListener;
 import listener.MissingListener;
@@ -20,7 +20,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import checker.AclChecker;
-import checker.CountChecker;
 
 import com.codahale.metrics.ConsoleReporter;
 import com.codahale.metrics.MetricRegistry;
@@ -72,7 +71,8 @@ public class Main {
     private static void runCheckers() {
         List<Runnable> checkers = new ArrayList<>();
         checkers.add(new AclChecker(config, eventBus));
-        checkers.add(new CountChecker(config, eventBus));
+        checkers.add(new CardinalityChecker(config, eventBus));
+        checkers.add(new TypeCardinalityChecker(config, eventBus));
         ExecutorService pool = Executors.newFixedThreadPool(config
                 .getPoolSize());
         for (Runnable checker : checkers) {
