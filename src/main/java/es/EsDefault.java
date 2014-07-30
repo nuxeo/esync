@@ -207,7 +207,7 @@ public class EsDefault implements Es {
                 .setQuery(QueryBuilders.matchAllQuery())
                 .addAggregation(
                         AggregationBuilders.terms("primaryType").field(
-                                "ecm:primaryType"));
+                                "ecm:primaryType").size(0));
         logSearchRequest(request);
         SearchResponse response = request.execute().actionGet();
         logSearchResponse(response);
