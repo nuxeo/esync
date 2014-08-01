@@ -1,5 +1,8 @@
+import java.io.ByteArrayOutputStream;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.PrintStream;
+import java.io.UnsupportedEncodingException;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
@@ -31,12 +34,16 @@ import config.ESyncConfig;
 public class Main {
     private static final Logger log = LoggerFactory.getLogger(Main.class);
     private static EventBus eventBus;
+    private static ESyncConfig config;
+
     private final static MetricRegistry registry = SharedMetricRegistries
             .getOrCreate("main");
+    private static ByteArrayOutputStream baos = new ByteArrayOutputStream();
+    private static PrintStream printStream = new PrintStream(baos);
     private final static ConsoleReporter reporter = ConsoleReporter
-            .forRegistry(registry).convertRatesTo(TimeUnit.SECONDS)
+            .forRegistry(registry).outputTo(printStream)
+            .convertRatesTo(TimeUnit.SECONDS)
             .convertDurationsTo(TimeUnit.MILLISECONDS).build();
-    private static ESyncConfig config;
 
     public static void main(String[] args) throws SQLException, IOException {
         log.info("Starting esync...");
@@ -44,14 +51,14 @@ public class Main {
         registerListener();
         runCheckers();
         log.info("End of esync");
-        if (log.isDebugEnabled()) {
-            reportMetrics();
-        }
+        reportMetrics();
     }
 
     private static ESyncConfig getConfig(String[] args) {
         ESyncConfig ret;
-        if (args.length > 0) {
+        if (args.length <= 0) {
+            ret = ConfigFactory.create(ESyncConfig.class);
+        } else {
             Properties props = new Properties();
             try {
                 props.load(new FileInputStream(args[0]));
@@ -60,8 +67,6 @@ public class Main {
                 throw new IllegalArgumentException(e);
             }
             ret = ConfigFactory.create(ESyncConfig.class, props);
-        } else {
-            ret = ConfigFactory.create(ESyncConfig.class);
         }
         return ret;
     }
@@ -69,6 +74,13 @@ public class Main {
     private static void reportMetrics() {
         reporter.report();
         reporter.stop();
+        String stats = null;
+        try {
+            stats = baos.toString("ISO-8859-1");
+        } catch (UnsupportedEncodingException e) {
+            log.error(e.getMessage(), e);
+        }
+        log.debug(stats);
     }
 
     private static void runCheckers() {
