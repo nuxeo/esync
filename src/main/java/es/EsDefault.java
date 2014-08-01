@@ -2,13 +2,13 @@ package es;
 
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import org.apache.commons.lang.StringUtils;
 import org.elasticsearch.action.ActionRequestBuilder;
 import org.elasticsearch.action.ActionResponse;
 import org.elasticsearch.action.count.CountRequestBuilder;
@@ -128,18 +128,18 @@ public class EsDefault implements Es {
     }
 
     @Override
-    public void checkSameAcl(String[] acl, String path,
-            List<String> excludePaths) {
+    public List<Document> getDocsWithInvalidAcl(String[] acl, String path,
+                                                List<String> excludePaths) {
         final Timer.Context context = aclTimer.time();
         try {
-            checkSameAclTimed(acl, path, excludePaths);
+            return getDocsWithInvalidAclTimed(acl, path, excludePaths);
         } finally {
             context.stop();
         }
     }
 
-    private void checkSameAclTimed(String[] acl, String path,
-            List<String> excludePaths) {
+    private List<Document> getDocsWithInvalidAclTimed(String[] acl, String path,
+                                                      List<String> excludePaths) {
         AndFilterBuilder filter = FilterBuilders.andFilter();
         // Looking for a different ACL
         if (Document.NO_ACL == acl) {
@@ -169,15 +169,22 @@ public class EsDefault implements Es {
         SearchResponse response = request.execute().actionGet();
         logSearchResponse(response);
         long hits = response.getHits().getTotalHits();
+        ArrayList<Document> ret = new ArrayList<Document>((int) hits);
         if (hits > 0) {
-            log.error(String.format("%d invalid ACL found on ES", hits));
+            log.info(String.format("%d invalid ACL found on ES", hits));
             for (SearchHit hit : response.getHits()) {
-                log.info("invalid acl for "
-                        + hit.field(PATH_FIELD).getValue().toString() + " "
-                        + hit.field(ACL_FIELD).getValues().toString()
-                        + " expecting " + StringUtils.join(acl, ","));
+                String aclDoc[];
+                try {
+                    Object[] aclArray = hit.field(ACL_FIELD).getValues().toArray();
+                    aclDoc = Arrays.copyOf(aclArray, aclArray.length, String[].class);
+                } catch (NullPointerException e) {
+                    aclDoc = Document.NO_ACL;
+                }
+                Document esDoc = new Document(hit.getId(), aclDoc, hit.field(PATH_FIELD).getValue().toString());
+                ret.add(esDoc);
             }
         }
+        return ret;
     }
 
     @Override

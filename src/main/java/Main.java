@@ -44,7 +44,9 @@ public class Main {
         registerListener();
         runCheckers();
         log.info("End of esync");
-        reportMetrics();
+        if (log.isDebugEnabled()) {
+            reportMetrics();
+        }
     }
 
     private static ESyncConfig getConfig(String[] args) {

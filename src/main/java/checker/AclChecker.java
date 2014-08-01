@@ -8,16 +8,16 @@ import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Queue;
 
-import com.google.common.eventbus.EventBus;
-import event.DiffEvent;
-import event.InfoEvent;
-import event.MissingEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.google.common.eventbus.EventBus;
 
 import config.ESyncConfig;
 import db.Document;
 import db.Node;
+import event.DiffEvent;
+import event.MissingEvent;
 
 public class AclChecker extends AbstractChecker {
 
@@ -63,7 +63,12 @@ public class AclChecker extends AbstractChecker {
         for (Node child : node.children) {
             excludePath.add(child.doc.path);
         }
-        es.checkSameAcl(acl, path, excludePath);
+        List<Document> invalidDocs = es.getDocsWithInvalidAcl(acl, path,
+                excludePath);
+        for (Document esDoc : invalidDocs) {
+            Document dbDoc = new Document(esDoc.id, acl, null);
+            post(new DiffEvent(dbDoc, esDoc, "Invalid ACL found"));
+        }
     }
 
     private Node buildTree(List<Document> documents) {
