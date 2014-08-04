@@ -34,7 +34,9 @@ public class AclChecker extends AbstractChecker {
         postMessage(String.format("%d documents hold an ACL", aclDocumentCount));
         compareWithEs(docsWithAcl);
         Node root = buildTree(docsWithAcl);
-        printTree(root, 0);
+        if (log.isTraceEnabled()) {
+            printTree(root, 0);
+        }
         checkAclConsistencyRecursive(root);
     }
 

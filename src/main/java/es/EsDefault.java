@@ -129,7 +129,7 @@ public class EsDefault implements Es {
 
     @Override
     public List<Document> getDocsWithInvalidAcl(String[] acl, String path,
-                                                List<String> excludePaths) {
+            List<String> excludePaths) {
         final Timer.Context context = aclTimer.time();
         try {
             return getDocsWithInvalidAclTimed(acl, path, excludePaths);
@@ -138,16 +138,15 @@ public class EsDefault implements Es {
         }
     }
 
-    private List<Document> getDocsWithInvalidAclTimed(String[] acl, String path,
-                                                      List<String> excludePaths) {
+    private List<Document> getDocsWithInvalidAclTimed(String[] acl,
+            String path, List<String> excludePaths) {
         AndFilterBuilder filter = FilterBuilders.andFilter();
         // Looking for a different ACL
         if (Document.NO_ACL == acl) {
             filter.add(FilterBuilders.notFilter(FilterBuilders.missingFilter(
                     ACL_FIELD).nullValue(true)));
         } else {
-            filter.add(FilterBuilders.notFilter(FilterBuilders.termFilter(
-                    ACL_FIELD, acl)));
+            filter.add(FilterBuilders.notFilter(FilterBuilders.termFilter(ACL_FIELD, acl)));
         }
         // Starts with path
         filter.add(FilterBuilders.termFilter(CHILDREN_FIELD, path));
@@ -175,12 +174,15 @@ public class EsDefault implements Es {
             for (SearchHit hit : response.getHits()) {
                 String aclDoc[];
                 try {
-                    Object[] aclArray = hit.field(ACL_FIELD).getValues().toArray();
-                    aclDoc = Arrays.copyOf(aclArray, aclArray.length, String[].class);
+                    Object[] aclArray = hit.field(ACL_FIELD).getValues()
+                            .toArray();
+                    aclDoc = Arrays.copyOf(aclArray, aclArray.length,
+                            String[].class);
                 } catch (NullPointerException e) {
                     aclDoc = Document.NO_ACL;
                 }
-                Document esDoc = new Document(hit.getId(), aclDoc, hit.field(PATH_FIELD).getValue().toString());
+                Document esDoc = new Document(hit.getId(), aclDoc, hit
+                        .field(PATH_FIELD).getValue().toString());
                 ret.add(esDoc);
             }
         }
@@ -210,11 +212,12 @@ public class EsDefault implements Es {
     private LinkedHashMap<String, Long> getTypeCardinalityTimed() {
         LinkedHashMap ret = new LinkedHashMap<String, Long>();
         SearchRequestBuilder request = getClient()
-                .prepareSearch(config.esIndex()).setSearchType(SearchType.COUNT)
+                .prepareSearch(config.esIndex())
+                .setSearchType(SearchType.COUNT)
                 .setQuery(QueryBuilders.matchAllQuery())
                 .addAggregation(
-                        AggregationBuilders.terms("primaryType").field(
-                                "ecm:primaryType").size(0));
+                        AggregationBuilders.terms("primaryType")
+                                .field("ecm:primaryType").size(0));
         logSearchRequest(request);
         SearchResponse response = request.execute().actionGet();
         logSearchResponse(response);
