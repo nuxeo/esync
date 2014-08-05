@@ -11,9 +11,6 @@ import java.util.Queue;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.google.common.eventbus.EventBus;
-
-import config.ESyncConfig;
 import db.Document;
 import db.Node;
 import event.DiffEvent;
@@ -22,10 +19,6 @@ import event.MissingEvent;
 public class AclChecker extends AbstractChecker {
 
     private static final Logger log = LoggerFactory.getLogger(AclChecker.class);
-
-    public AclChecker(ESyncConfig config, EventBus eventBus) {
-        super(config, eventBus);
-    }
 
     @Override
     void check() {

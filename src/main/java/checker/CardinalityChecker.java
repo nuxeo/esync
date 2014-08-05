@@ -14,10 +14,6 @@ public class CardinalityChecker extends AbstractChecker {
     private static final Logger log = LoggerFactory
             .getLogger(CardinalityChecker.class);
 
-    public CardinalityChecker(ESyncConfig config, EventBus eventBus) {
-        super(config, eventBus);
-    }
-
     @Override
     void check() {
         long esCount = es.getCardinality();

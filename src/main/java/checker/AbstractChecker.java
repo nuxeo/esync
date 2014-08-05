@@ -10,17 +10,19 @@ import es.EsDefault;
 import event.Event;
 import event.InfoEvent;
 
+import javax.inject.Inject;
+import javax.inject.Singleton;
+
 public abstract class AbstractChecker implements Runnable {
 
-    protected final ESyncConfig config;
-    protected final EventBus eventBus;
-    protected Db db;
-    protected Es es;
-
-    public AbstractChecker(ESyncConfig config, EventBus eventBus) {
-        this.config = config;
-        this.eventBus = eventBus;
-    }
+    @Inject
+    ESyncConfig config;
+    @Inject
+    EventBus eventBus;
+    @Inject
+    Db db;
+    @Inject
+    Es es;
 
     public void post(Event event) {
         eventBus.post(event);
@@ -33,9 +35,7 @@ public abstract class AbstractChecker implements Runnable {
     @Override
     public void run() {
         postMessage("Starting");
-        db = new DbSql();
         db.initialize(config);
-        es = new EsDefault();
         es.initialize(config);
         try {
             check();

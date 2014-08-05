@@ -46,6 +46,7 @@ public class DbSql implements Db {
     public void initialize(ESyncConfig config) {
         this.config = config;
         dialect = DialectFactory.create(config.dbDriver());
+        getDbConnection();
     }
 
     @Override

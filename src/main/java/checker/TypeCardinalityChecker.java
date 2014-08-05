@@ -20,9 +20,6 @@ public class TypeCardinalityChecker extends AbstractChecker {
     private static final Logger log = LoggerFactory
             .getLogger(TypeCardinalityChecker.class);
 
-    public TypeCardinalityChecker(ESyncConfig config, EventBus eventBus) {
-        super(config, eventBus);
-    }
 
     @Override
     void check() {
