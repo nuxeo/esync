@@ -3,6 +3,7 @@ import java.io.IOException;
 import java.sql.SQLException;
 import java.util.Properties;
 
+import checker.Discovery;
 import org.aeonbits.owner.ConfigFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -17,6 +18,7 @@ public class Main {
         ESyncConfig config = getConfig(args);
         ObjectGraph objectGraph = ObjectGraph.create(new AppModule(config));
         App app = objectGraph.get(App.class);
+        app.injectCheckers(objectGraph);
         app.run();
     }
 

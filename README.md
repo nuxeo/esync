@@ -69,7 +69,7 @@ This is a quick check to count the total number of documents in the db
 and Elasticsearch.
 
 False positive cases:
-- this does not garanties that we have the same documents (just the same number)
+- this does not garantee that we have the same documents, just the same number.
 
 False negative cases:
 - some system documents are not indexed (like Comments)
@@ -79,7 +79,7 @@ False negative cases:
 Checks the number of each document types.
 
 False positive cases:
-- this does not garanties that we have the same documents (just the same number)
+- this does not garantee that we have the same documents, just the same number.
 
 False negative cases:
 - some system documents are not indexed (like Comments), in

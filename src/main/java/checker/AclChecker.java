@@ -16,6 +16,8 @@ import db.Node;
 import event.DiffEvent;
 import event.MissingEvent;
 
+import javax.inject.Inject;
+
 public class AclChecker extends AbstractChecker {
 
     private static final Logger log = LoggerFactory.getLogger(AclChecker.class);

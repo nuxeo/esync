@@ -13,7 +13,11 @@ import es.EsDefault;
 /**
  * Dagger app module
  */
-@Module(injects = App.class, complete = false, library = true)
+@Module(injects = { App.class,
+        checker.TypeCardinalityChecker.class,
+        checker.AclChecker.class,
+        checker.CardinalityChecker.class
+        }, complete = false, library = true)
 public class AppModule {
 
     private final ESyncConfig config;
@@ -38,9 +42,8 @@ public class AppModule {
     Db provideDb() {
         DbSql ret = new DbSql();
         // System.out.println("provide db " + ret);
-        // for (StackTraceElement ste : Thread.currentThread().getStackTrace())
-        // {
-        // System.out.println(ste);
+        // for (StackTraceElement ste : Thread.currentThread().getStackTrace()) {
+        //   System.out.println(ste);
         // }
         return ret;
     }
