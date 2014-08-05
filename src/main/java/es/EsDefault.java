@@ -9,6 +9,8 @@ import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import javax.inject.Singleton;
+
 import org.elasticsearch.action.ActionRequestBuilder;
 import org.elasticsearch.action.ActionResponse;
 import org.elasticsearch.action.count.CountRequestBuilder;
@@ -40,6 +42,7 @@ import com.codahale.metrics.Timer;
 import config.ESyncConfig;
 import db.Document;
 
+@Singleton
 public class EsDefault implements Es {
     private static final Logger log = LoggerFactory.getLogger(EsDefault.class);
     private static final String DOC_TYPE = "doc";
@@ -146,7 +149,8 @@ public class EsDefault implements Es {
             filter.add(FilterBuilders.notFilter(FilterBuilders.missingFilter(
                     ACL_FIELD).nullValue(true)));
         } else {
-            filter.add(FilterBuilders.notFilter(FilterBuilders.termFilter(ACL_FIELD, acl)));
+            filter.add(FilterBuilders.notFilter(FilterBuilders.termFilter(
+                    ACL_FIELD, acl)));
         }
         // Starts with path
         filter.add(FilterBuilders.termFilter(CHILDREN_FIELD, path));

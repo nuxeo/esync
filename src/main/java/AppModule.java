@@ -37,10 +37,11 @@ public class AppModule {
     @Provides
     Db provideDb() {
         DbSql ret = new DbSql();
-        //System.out.println("provide db " + ret);
-        //for (StackTraceElement ste : Thread.currentThread().getStackTrace()) {
-        //   System.out.println(ste);
-        //}
+        // System.out.println("provide db " + ret);
+        // for (StackTraceElement ste : Thread.currentThread().getStackTrace())
+        // {
+        // System.out.println(ste);
+        // }
         return ret;
     }
 

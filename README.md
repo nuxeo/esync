@@ -1,4 +1,8 @@
-# esync Nuxeo Elasticsearch VCS repository checker
+# esync a tool to compare Nuxeo repository and Elasticsearch content
+
+When using [nuxeo-elasticsearch](http://doc.nuxeo.com/x/iYElAQ) we
+want to be sure that the repository content is in sync with the content
+indexed in Elasticsearch.
 
 This tool enables to detect difference between the Nuxeo database
 repository and the indexed content in Elasticsearch.
@@ -7,19 +11,19 @@ repository and the indexed content in Elasticsearch.
 
 ## Building from sources
 
-Build:
+Create the all in on jar:
 
         mvn package
-		
-Create a all in one jar
 
-        ./target/nuxeo-esync-1.0-SNAPSHOT-capsule-full.jar
-		
+The jar is located here:
+
+        ./target/nuxeo-esync-VERSION-capsule-full.jar
+
 # Usage
 
 ## Configuration
 
-Create a /etc/esync.conf or ~/.esync.conf file
+Create a `/etc/esync.conf` or `~/.esync.conf` with the following content:
 
       nuxeo.db.user=nuxeo
       nuxeo.db.password=nuxeo
@@ -33,53 +37,66 @@ Create a /etc/esync.conf or ~/.esync.conf file
       checker.pool.size=10
 
 
+See https://github.com/bdelbosc/esync/blob/master/src/main/java/config/ESyncConfig.java
+for the full list of properties.
+
 ## Invocation
 
-       java -jar /path/to/nuxeo-esync-1.0-SNAPSHOT-capsule-full.jar
-	   # or
-       java -jar /path/to/nuxeo-esync-1.0-SNAPSHOT-capsule-full.jar /path/to/config-file.conf
+       # using a default conf located in /etc/esync.conf or ~/.esync.conf
+       java -jar /path/to/nuxeo-esync-$VERSION-capsule-full.jar
+
+	   # using an another config file
+       java -jar /path/to/nuxeo-esync-$VERSION-capsule-full.jar /path/to/config-file.conf
 
 # Checkers
 
-Checkers compare the reference (database) with the Elasticsearch.
-They reports differents things:
+The tools run concurrently different checkers.
+
+Checkers compare the reference (database) with the Elasticsearch content.
+
+They report different things:
+
 - Errors like a different number of documents
 - Missing documents in Elasticsearch
 - Trailing documents in Elasticsearch
 - Difference in document properties like ACL, path...
 
+Here is a list of available checkers.
+
 ## Cardinality Checker
 
-Checks the total number of documents
+This is a quick check to count the total number of documents in the db
+and Elasticsearch.
 
-False positive cases: 
-- none
+False positive cases:
+- this does not garanties that we have the same documents (just the same number)
 
 False negative cases:
 - some system documents are not indexed (like Comments)
 
 ## Type Cardinality Checker
 
-Checks the number of each type of documents.
+Checks the number of each document types.
 
 False positive cases:
-- none
+- this does not garanties that we have the same documents (just the same number)
 
 False negative cases:
-- some system documents are not indexed (like Comments)
+- some system documents are not indexed (like Comments), in
+  this case the total number is 0 on the Elasticsearch part
 
 ## ACL Checker
 
-Checks ACL in ES for all documents that holds an ACL.
-Checks that all children of these documents holds the same ACLs.
+It performs 2 checks:
+- Checks that all documents that hold an ACL are well indexed in ES
+- Checks that all documents in ES have a correct ACL
 
 False positive cases:
-- some ACL can be more permissive on ES we check only that the read acls
-  is right
+- some ACL can be more permissive on ES
 
 False negative cases:
 - none
-- 
+
 
 # About Nuxeo
 
