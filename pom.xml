@@ -131,8 +131,8 @@
             <manifestEntries>
               <Application-Class>Main</Application-Class>
               <Min-Java-Version>1.7.0</Min-Java-Version>
-              <JVM-Args></JVM-Args>
-              <System-Properties></System-Properties>
+              <JVM-Args/>
+              <System-Properties/>
               <Java-Agents>co.paralleluniverse:quasar-core:0.5.0</Java-Agents>
             </manifestEntries>
           </archive>

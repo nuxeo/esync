@@ -3,7 +3,6 @@ import java.io.IOException;
 import java.sql.SQLException;
 import java.util.Properties;
 
-import checker.Discovery;
 import org.aeonbits.owner.ConfigFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

@@ -1,13 +1,8 @@
 package checker;
 
-import java.util.Map;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.google.common.eventbus.EventBus;
-
-import config.ESyncConfig;
 import event.ErrorEvent;
 
 public class CardinalityChecker extends AbstractChecker {
@@ -25,8 +20,7 @@ public class CardinalityChecker extends AbstractChecker {
         if (dbCount != esCount) {
             post(new ErrorEvent(
                     String.format(
-                            ""
-                                    + "Different number of documents between DB and ES: %d vs %d",
+                            "Different number of documents between DB and ES: %d vs %d",
                             dbCount, esCount)));
         }
     }

@@ -7,12 +7,13 @@ public class DialectFactory {
     private static final String ORACLE_DRIVER = "oracle.jdbc.OracleDriver";
 
     public static Dialect create(String driver) {
-        if (POSTGRESQL_DRIVER.equals(driver)) {
-            return new Postgresql();
-        } else if (MSSQL_DRIVE.equals(driver)) {
-            return new Mssql();
-        } else if (ORACLE_DRIVER.equals(driver)) {
-            return new Oracle();
+        switch (driver) {
+            case POSTGRESQL_DRIVER:
+                return new Postgresql();
+            case MSSQL_DRIVE:
+                return new Mssql();
+            case ORACLE_DRIVER:
+                return new Oracle();
         }
         throw new IllegalArgumentException("Unknown driver :" + driver);
     }

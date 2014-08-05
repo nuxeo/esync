@@ -1,17 +1,14 @@
 package checker;
 
+import javax.inject.Inject;
+
 import com.google.common.eventbus.EventBus;
 
 import config.ESyncConfig;
 import db.Db;
-import db.DbSql;
 import es.Es;
-import es.EsDefault;
 import event.Event;
 import event.InfoEvent;
-
-import javax.inject.Inject;
-import javax.inject.Singleton;
 
 public abstract class AbstractChecker implements Runnable {
 

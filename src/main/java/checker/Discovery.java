@@ -5,7 +5,7 @@ import org.reflections.Reflections;
 import java.util.Set;
 
 /**
- * Get the checker list
+ * Use reflection to get the list of checkers
  */
 public class Discovery {
 
