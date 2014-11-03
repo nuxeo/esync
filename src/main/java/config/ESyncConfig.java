@@ -2,6 +2,8 @@ package config;
 
 import org.aeonbits.owner.Config;
 
+import java.util.List;
+
 @Config.Sources({ "file:~/.esync.conf", "file:/etc/esync.conf" })
 public interface ESyncConfig extends Config {
 
@@ -58,4 +60,7 @@ public interface ESyncConfig extends Config {
     @DefaultValue("60")
     @Key("checker.pool.timeoutMinutes")
     long getTimeoutMinutes();
+
+    @Key("checker.list")
+    List<String> getCheckers();
 }

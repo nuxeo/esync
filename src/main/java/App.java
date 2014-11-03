@@ -47,7 +47,8 @@ public class App implements Runnable {
     final List<Runnable> checkers = new ArrayList<>();
 
     public void injectCheckers(ObjectGraph objectGraph) {
-        for (Class checkerClass : Discovery.getCheckersClass()) {
+        List<String> filter = config.getCheckers();
+        for (Class checkerClass : Discovery.getCheckersClass(filter)) {
             log.info("Injecting checker: " + checkerClass.getSimpleName());
             checkers.add((Runnable) objectGraph.get(checkerClass));
         }
