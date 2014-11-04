@@ -1,17 +1,15 @@
 package event;
 
-import db.Document;
-
 public class MissingEvent extends Event {
 
-    private final Document document;
+    private final String docId;
 
-    public MissingEvent(Document document, String message) {
+    public MissingEvent(String docId, String message) {
         super(message);
-        this.document = document;
+        this.docId = docId;
     }
 
-    public Document getDocument() {
-        return document;
+    public String getDocId() {
+        return docId;
     }
 }

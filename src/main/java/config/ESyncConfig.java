@@ -3,6 +3,7 @@ package config;
 import org.aeonbits.owner.Config;
 
 import java.util.List;
+import java.util.Set;
 
 @Config.Sources({ "file:~/.esync.conf", "file:/etc/esync.conf" })
 public interface ESyncConfig extends Config {
@@ -61,6 +62,19 @@ public interface ESyncConfig extends Config {
     @Key("checker.pool.timeoutMinutes")
     long getTimeoutMinutes();
 
+    @DefaultValue("3")
+    @Key("checker.scrollTimeMinute")
+    long getScrollTime();
+
+    @DefaultValue("100")
+    @Key("checker.scrollSize")
+    int getScrollSize();
+
+    @DefaultValue("")
     @Key("checker.list")
-    List<String> getCheckers();
+    Set<String> getCheckers();
+
+    @DefaultValue("")
+    @Key("checker.blackList")
+    Set<String> getCheckersBlackList();
 }

@@ -3,12 +3,14 @@ import java.io.PrintStream;
 import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 import javax.inject.Inject;
 
+import checker.AbstractChecker;
 import listener.DiffListener;
 import listener.ErrorListener;
 import listener.InfoListener;
@@ -44,13 +46,15 @@ public class App implements Runnable {
     EventBus eventBus;
     @Inject
     ESyncConfig config;
-    final List<Runnable> checkers = new ArrayList<>();
+    final List<AbstractChecker> checkers = new ArrayList<>();
 
     public void injectCheckers(ObjectGraph objectGraph) {
-        List<String> filter = config.getCheckers();
-        for (Class checkerClass : Discovery.getCheckersClass(filter)) {
+        for (Class checkerClass : Discovery.getCheckersClass(config.getCheckers(),
+                config.getCheckersBlackList())) {
             log.info("Injecting checker: " + checkerClass.getSimpleName());
-            checkers.add((Runnable) objectGraph.get(checkerClass));
+            AbstractChecker checker = (AbstractChecker) objectGraph.get(checkerClass);
+            checker.init();
+            checkers.add(checker);
         }
     }
 
@@ -77,8 +81,10 @@ public class App implements Runnable {
         log.info(String.format(
                 "Executing %d checkers with a pool of %d thread(s).",
                 checkers.size(), poolSize));
-        for (Runnable checker : checkers) {
-            pool.execute(checker);
+        for (AbstractChecker checker : checkers) {
+            if (checker.autoRun()) {
+                pool.execute(checker);
+            }
         }
         pool.shutdown();
         try {

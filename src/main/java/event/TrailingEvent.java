@@ -1,17 +1,15 @@
 package event;
 
-import db.Document;
-
 public class TrailingEvent extends Event {
 
-    private final Document document;
+    private final String docId;
 
-    public TrailingEvent(Document document, String message) {
+    public TrailingEvent(String docId, String message) {
         super(message);
-        this.document = document;
+        this.docId = docId;
     }
 
-    public Document getDocument() {
-        return document;
+    public String getDocId() {
+        return docId;
     }
 }

@@ -2,7 +2,9 @@ package es;
 
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.NoSuchElementException;
+import java.util.Set;
 
 import config.ESyncConfig;
 import db.Document;
@@ -19,5 +21,7 @@ public interface Es {
 
     long getCardinality();
 
-    LinkedHashMap<String, Long> getTypeCardinality();
+    Map<String, Long> getTypeCardinality();
+
+    Set<String> getDocumentIdsForType(String type);
 }

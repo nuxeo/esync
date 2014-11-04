@@ -1,5 +1,10 @@
 import javax.inject.Singleton;
 
+import checker.AclChecker;
+import checker.CardinalityChecker;
+import checker.DocumentTypeLister;
+import checker.OrphanLister;
+import checker.TypeCardinalityChecker;
 import com.google.common.eventbus.EventBus;
 
 import config.ESyncConfig;
@@ -14,9 +19,11 @@ import es.EsDefault;
  * Dagger app module
  */
 @Module(injects = { App.class,
-        checker.TypeCardinalityChecker.class,
-        checker.AclChecker.class,
-        checker.CardinalityChecker.class
+        TypeCardinalityChecker.class,
+        AclChecker.class,
+        CardinalityChecker.class,
+        DocumentTypeLister.class,
+        OrphanLister.class
         }, complete = false, library = true)
 public class AppModule {
 

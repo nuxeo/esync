@@ -11,8 +11,11 @@ import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 import org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger;
@@ -41,6 +44,8 @@ public class DbSql implements Db {
             .timer("esync.db.cardinality");
     private final Timer typeCardinalityTimer = registry
             .timer("esync.db.type.cardinality");
+    private final Timer documentIdsForTypeTimed = registry
+            .timer("esync.db.type.documentIdsForType");
 
     @Override
     public void initialize(ESyncConfig config) {
@@ -137,7 +142,7 @@ public class DbSql implements Db {
     }
 
     @Override
-    public LinkedHashMap<String, Long> getTypeCardinality() {
+    public Map<String, Long> getTypeCardinality() {
         final Timer.Context context = typeCardinalityTimer.time();
         try {
             return getTypeCardinalityTimed();
@@ -146,8 +151,8 @@ public class DbSql implements Db {
         }
     }
 
-    private LinkedHashMap<String, Long> getTypeCardinalityTimed() {
-        LinkedHashMap ret = new LinkedHashMap<String, Long>();
+    private Map<String, Long> getTypeCardinalityTimed() {
+        Map<String, Long> ret = new LinkedHashMap<>();
         try {
             Statement st = getDbConnection().createStatement();
             ResultSet rs = st.executeQuery(dialect.getTypeQuery());
@@ -155,6 +160,33 @@ public class DbSql implements Db {
                 String primaryType = rs.getString("primarytype");
                 long count = rs.getLong("count");
                 ret.put(primaryType, count);
+            }
+            rs.close();
+            st.close();
+        } catch (SQLException e) {
+            throw new RuntimeException(e.getMessage(), e);
+        }
+        return ret;
+    }
+
+    @Override
+    public Set<String> getDocumentIdsForType(String type) {
+        final Timer.Context context = documentIdsForTypeTimed.time();
+        try {
+            return getDocumentIdsForTypeTimed(type);
+        } finally {
+            context.stop();
+        }
+    }
+
+    private Set<String> getDocumentIdsForTypeTimed(String type) {
+        Set<String> ret = new HashSet<>();
+        try {
+            Statement st = getDbConnection().createStatement();
+            ResultSet rs = st.executeQuery(dialect.getDocumentIdsForType(type));
+            while (rs.next()) {
+                String id = rs.getString("id");
+                ret.add(id);
             }
             rs.close();
             st.close();
@@ -193,5 +225,4 @@ public class DbSql implements Db {
         }
         return hostname;
     }
-
 }

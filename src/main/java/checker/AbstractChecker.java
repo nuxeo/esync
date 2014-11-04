@@ -7,6 +7,7 @@ import com.google.common.eventbus.EventBus;
 import config.ESyncConfig;
 import db.Db;
 import es.Es;
+import event.ErrorEvent;
 import event.Event;
 import event.InfoEvent;
 
@@ -29,6 +30,14 @@ public abstract class AbstractChecker implements Runnable {
         eventBus.post(new InfoEvent(getName() + ": " + message));
     }
 
+    public void postError(String message) {
+        eventBus.post(new ErrorEvent(getName() + ": " + message));
+    }
+
+    public boolean autoRun() {
+        return true;
+    }
+
     @Override
     public void run() {
         postMessage("Starting");
@@ -47,4 +56,6 @@ public abstract class AbstractChecker implements Runnable {
 
     abstract String getName();
 
+    public void init() {
+    }
 }

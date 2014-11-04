@@ -12,7 +12,7 @@ public class MissingListener {
 
     @Subscribe
     public void handleEvent(MissingEvent event) {
-        log.info(String.format("MISS: %s, %s", event.getDocument(),
+        log.error(String.format("MISS: %s, %s", event.getDocId(),
                 event.getMessage()));
     }
 }

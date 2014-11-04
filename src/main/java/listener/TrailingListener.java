@@ -12,7 +12,7 @@ public class TrailingListener {
 
     @Subscribe
     public void handleEvent(TrailingEvent event) {
-        log.info(String.format("REMOVE: %s, %s", event.getDocument(),
+        log.error(String.format("REMOVE: %s, %s", event.getDocId(),
                 event.getMessage()));
     }
 }

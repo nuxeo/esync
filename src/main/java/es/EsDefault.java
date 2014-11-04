@@ -4,9 +4,12 @@ import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.NoSuchElementException;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import javax.inject.Singleton;
@@ -25,6 +28,7 @@ import org.elasticsearch.client.transport.TransportClient;
 import org.elasticsearch.common.settings.ImmutableSettings;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.transport.InetSocketTransportAddress;
+import org.elasticsearch.common.unit.TimeValue;
 import org.elasticsearch.index.query.AndFilterBuilder;
 import org.elasticsearch.index.query.FilterBuilders;
 import org.elasticsearch.index.query.OrFilterBuilder;
@@ -32,6 +36,7 @@ import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.search.SearchHit;
 import org.elasticsearch.search.aggregations.AggregationBuilders;
 import org.elasticsearch.search.aggregations.bucket.terms.Terms;
+import org.elasticsearch.search.sort.SortOrder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -60,6 +65,8 @@ public class EsDefault implements Es {
             .timer("esync.es.cardinality");
     private final static Timer typeCardinalityTimer = registry
             .timer("esync.es.type.cardinality");
+    private final Timer documentIdsForTypeTimed = registry
+            .timer("esync.es.type.documentIdsForType");
 
     @Override
     public void initialize(ESyncConfig config) {
@@ -172,7 +179,7 @@ public class EsDefault implements Es {
         SearchResponse response = request.execute().actionGet();
         logSearchResponse(response);
         long hits = response.getHits().getTotalHits();
-        ArrayList<Document> ret = new ArrayList<Document>((int) hits);
+        ArrayList<Document> ret = new ArrayList<>((int) hits);
         if (hits > 0) {
             log.info(String.format("%d invalid ACL found on ES", hits));
             for (SearchHit hit : response.getHits()) {
@@ -204,7 +211,7 @@ public class EsDefault implements Es {
     }
 
     @Override
-    public LinkedHashMap<String, Long> getTypeCardinality() {
+    public Map<String, Long> getTypeCardinality() {
         final Timer.Context context = typeCardinalityTimer.time();
         try {
             return getTypeCardinalityTimed();
@@ -213,8 +220,8 @@ public class EsDefault implements Es {
         }
     }
 
-    private LinkedHashMap<String, Long> getTypeCardinalityTimed() {
-        LinkedHashMap ret = new LinkedHashMap<String, Long>();
+    private Map<String, Long> getTypeCardinalityTimed() {
+        LinkedHashMap<String, Long> ret = new LinkedHashMap<>();
         SearchRequestBuilder request = getClient()
                 .prepareSearch(config.esIndex())
                 .setSearchType(SearchType.COUNT)
@@ -241,6 +248,47 @@ public class EsDefault implements Es {
         CountResponse response = request.execute().actionGet();
         logSearchResponse(response);
         return response.getCount();
+    }
+
+    @Override
+    public Set<String> getDocumentIdsForType(String type) {
+        final Timer.Context context = documentIdsForTypeTimed.time();
+        try {
+            return getDocumentIdsForTypeTimed(type);
+        } finally {
+            context.stop();
+        }
+    }
+
+    private Set<String> getDocumentIdsForTypeTimed(String type) {
+        Set<String> ret = new HashSet<>();
+        SearchRequestBuilder request = getClient()
+                .prepareSearch(config.esIndex())
+                .setSearchType(SearchType.SCAN)
+                .setQuery(
+                        QueryBuilders.constantScoreQuery(FilterBuilders
+                                .termFilter("ecm:primaryType", type)))
+                .setScroll(getScrollTime()).setSize(config.getScrollSize())
+                .addField("_uid");
+        logSearchRequest(request);
+        SearchResponse response = request.execute().actionGet();
+        logSearchResponse(response);
+        while (true) {
+            response = getClient().prepareSearchScroll(response.getScrollId())
+                    .setScroll(getScrollTime()).execute().actionGet();
+            logSearchResponse(response);
+            for (SearchHit hit : response.getHits()) {
+                ret.add(hit.getId());
+            }
+            if (response.getHits().getHits().length == 0) {
+                break;
+            }
+        }
+        return ret;
+    }
+
+    private TimeValue getScrollTime() {
+        return TimeValue.timeValueMinutes(config.getScrollTime());
     }
 
     private Client getClient() {

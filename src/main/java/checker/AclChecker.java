@@ -111,7 +111,7 @@ public class AclChecker extends AbstractChecker {
             try {
                 esDoc = es.getDocument(doc.id);
             } catch (NoSuchElementException e) {
-                post(new MissingEvent(doc, "not found in es"));
+                post(new MissingEvent(doc.id, "not found in es"));
                 continue;
             }
             if (!doc.equals(esDoc)) {

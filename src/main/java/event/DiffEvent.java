@@ -2,6 +2,9 @@ package event;
 
 import db.Document;
 
+/**
+ * Event to notify difference between a document in db and es
+ */
 public class DiffEvent extends Event {
 
     private final Document dbDocument;

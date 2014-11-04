@@ -2,6 +2,7 @@ package db;
 
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Set;
 
 import config.ESyncConfig;
 
@@ -21,5 +22,7 @@ public interface Db {
      */
     long getCardinality();
 
-    LinkedHashMap<String, Long> getTypeCardinality();
+    java.util.Map<String, Long> getTypeCardinality();
+
+    Set<String> getDocumentIdsForType(String type);
 }
