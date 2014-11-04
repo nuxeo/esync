@@ -41,8 +41,8 @@ public class TypeCardinalityChecker extends AbstractChecker {
                 dbCount = dbTypes.get(key);
             }
             postError(String.format(
-                    "Document type %s, expected: %d, actual: %d", key, dbCount,
-                    esCount));
+                    "Document type %s, expected: %d, actual: %d, diff: %d", key, dbCount,
+                    esCount, dbCount - esCount));
             post(new DiffTypeEvent(key, "diff"));
         }
     }

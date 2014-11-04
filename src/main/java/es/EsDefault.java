@@ -36,7 +36,6 @@ import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.search.SearchHit;
 import org.elasticsearch.search.aggregations.AggregationBuilders;
 import org.elasticsearch.search.aggregations.bucket.terms.Terms;
-import org.elasticsearch.search.sort.SortOrder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -225,7 +224,19 @@ public class EsDefault implements Es {
         SearchRequestBuilder request = getClient()
                 .prepareSearch(config.esIndex())
                 .setSearchType(SearchType.COUNT)
-                .setQuery(QueryBuilders.matchAllQuery())
+                .setQuery(
+                        QueryBuilders.constantScoreQuery(FilterBuilders
+                                .andFilter(FilterBuilders
+                                        .notFilter(FilterBuilders.termFilter(
+                                                "ecm:isProxy", "true")),
+                                        FilterBuilders.notFilter(FilterBuilders
+                                                .termFilter("ecm:primaryType",
+                                                        "Root")),
+                                        FilterBuilders
+                                                .existsFilter("ecm:parentId"),
+                                        FilterBuilders.notFilter(FilterBuilders
+                                                .termFilter("ecm:isVersion",
+                                                        "true")))))
                 .addAggregation(
                         AggregationBuilders.terms("primaryType")
                                 .field("ecm:primaryType").size(0));
