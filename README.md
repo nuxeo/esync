@@ -11,7 +11,7 @@ repository and the indexed content in Elasticsearch.
 
 ## Building from sources
 
-Create the all in on jar:
+Create the all in one jar:
 
         mvn package
 
@@ -23,36 +23,35 @@ The jar is located here:
 
 ## Configuration
 
-Create a `/etc/esync.conf` or `~/.esync.conf` with the following content:
+Create a `/etc/esync.conf` or `~/.esync.conf` using one of the samples provided :
+- `esync-postgresql.conf.example`
+- `esync-mssql.conf.example`
 
-      nuxeo.db.user=nuxeo
-      nuxeo.db.password=nuxeo
-      nuxeo.db.driver=org.postgresql.Driver
-      nuxeo.db.jdbc.url=jdbc:postgresql://localhost:5432/nuxeoes
+You will need to configure the database and Elasticsearch access.
 
-      elasticsearch.addressList=localhost:9300
-      elasticsearch.indexName=nuxeo
-      elasticsearch.clusterName=elasticsearch
-
-      checker.pool.size=10
-
-
-See https://github.com/bdelbosc/esync/blob/master/src/main/java/config/ESyncConfig.java
-for the full list of properties.
+Refer to the [source for the full list of options](https://github.com/bdelbosc/esync/blob/master/src/main/java/config/ESyncConfig.java)
+available.
 
 ## Invocation
 
-       # using a default conf located in /etc/esync.conf or ~/.esync.conf
-       java -jar /path/to/nuxeo-esync-$VERSION-capsule-full.jar
+     # using a default conf located in /etc/esync.conf or ~/.esync.conf
+     java -jar /path/to/nuxeo-esync-$VERSION-capsule-full.jar
 
 	   # using an another config file
-       java -jar /path/to/nuxeo-esync-$VERSION-capsule-full.jar /path/to/config-file.conf
+     java -jar /path/to/nuxeo-esync-$VERSION-capsule-full.jar /path/to/config-file.conf
+
+     # customizing the log
+     java -Dlog4j.configuration=file:mylog4j.xml -jar nuxeo-esync-$VERSION-capsule-full.jar
+
+
+You can find the default [log4.xml here](https://github.com/bdelbosc/esync/blob/master/src/main/resources/log4j.xml)
+default log file is in `/tmp/trace.log`.
 
 # Checkers
 
-The tools run concurrently different checkers.
+The tool runs concurrently different checkers.
 
-Checkers compare the reference (database) with the Elasticsearch content.
+Checkers compare the reference database (expected) with the Elasticsearch content (actual).
 
 They report different things:
 
@@ -60,6 +59,7 @@ They report different things:
 - Missing documents in Elasticsearch
 - Trailing documents in Elasticsearch
 - Difference in document properties like ACL, path...
+
 
 Here is a list of available checkers.
 
@@ -85,6 +85,16 @@ False negative cases:
 - some system documents are not indexed (like Comments), in
   this case the total number is 0 on the Elasticsearch part
 
+## Type Document Lister
+
+When there is a difference raise by the Type Cardinality checker the list of ids for this type
+is compared, to gives the missing and spurious document ids.
+
+False positive cases: None
+False negative cases: None
+
+It can takes time and memory to list all doc ids from the database.
+
 ## ACL Checker
 
 It performs 2 checks:
@@ -96,6 +106,12 @@ False positive cases:
 
 False negative cases:
 - none
+
+## Orphan Checker
+
+Cardinality checkers don't take in account document with no parentid.
+
+TODO: impl and document
 
 
 # About Nuxeo

@@ -19,10 +19,10 @@ public class TypeCardinalityChecker extends AbstractChecker {
         Map<String, Long> dbTypes = db.getTypeCardinality();
         MapDifference<String, Long> diff = Maps.difference(dbTypes, esTypes);
         if (diff.areEqual()) {
-            postMessage("Found same type cardinality");
+            postMessage("Found same types cardinality");
             return;
         }
-        postMessage("Difference found in types cadinality.");
+        postMessage("Difference found in types cardinality.");
         for (String key : diff.entriesOnlyOnLeft().keySet()) {
             postError(String.format("Missing type on ES: %s, expected: %d",
                     key, dbTypes.get(key)));
