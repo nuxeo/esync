@@ -287,7 +287,9 @@ public class EsDefault implements Es {
         while (true) {
             response = getClient().prepareSearchScroll(response.getScrollId())
                     .setScroll(getScrollTime()).execute().actionGet();
-            logSearchResponse(response);
+            if (log.isTraceEnabled()) {
+                logSearchResponse(response);
+            }
             for (SearchHit hit : response.getHits()) {
                 ret.add(hit.getId());
             }
