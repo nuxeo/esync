@@ -1,18 +1,21 @@
 package db;
 
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Set;
 
 import org.apache.commons.lang.StringUtils;
 
 public class Document {
     public final String id;
-    public String[] acl;
+    public Set<String> acl;
     public String path;
     public String parentId;
 
-    static public final String[] NO_ACL = {};
+    static public final Set<String> NO_ACL = Collections.emptySet();
 
-    public Document(String id, String acl[], String path) {
+    public Document(String id, Set<String> acl, String path) {
         this.id = id;
         this.acl = acl;
         this.path = path;
@@ -20,7 +23,7 @@ public class Document {
 
     public Document(String id, String acl[]) {
         this.id = id;
-        this.acl = acl;
+        this.acl = new HashSet<>(Arrays.asList(acl));
     }
 
     @Override
@@ -31,14 +34,14 @@ public class Document {
 
     @Override
     public boolean equals(Object obj) {
-        if(obj == null || !(obj instanceof Document)) {
+        if (obj == null || !(obj instanceof Document)) {
             return false;
         }
         Document other = (Document) obj;
         if (id != null && !id.equals(other.id)) {
             return false;
         }
-        if (acl != null && !Arrays.equals(acl, other.acl)) {
+        if (acl != null && !acl.equals(other.acl)) {
             return false;
         }
         if (path != null && !path.equals(other.path)) {

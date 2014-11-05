@@ -7,6 +7,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Queue;
+import java.util.Set;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -53,7 +54,7 @@ public class AclChecker extends AbstractChecker {
             return;
         }
         String path = node.doc.path;
-        String[] acl = node.doc.acl;
+        Set<String> acl = node.doc.acl;
         List<String> excludePath = new ArrayList<>();
         for (Node child : node.children) {
             excludePath.add(child.doc.path);

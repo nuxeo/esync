@@ -125,10 +125,12 @@ public class EsDefault implements Es {
         if (!ret.isExists()) {
             throw new NoSuchElementException(id + " not found in ES");
         }
-        String acl[];
+        Set<String> acl;
         try {
             Object[] aclArray = ret.getField(ACL_FIELD).getValues().toArray();
-            acl = Arrays.copyOf(aclArray, aclArray.length, String[].class);
+            String[] aclStringArray = Arrays.copyOf(aclArray, aclArray.length,
+                    String[].class);
+            acl = new HashSet<>(Arrays.asList(aclStringArray));
         } catch (NullPointerException e) {
             acl = Document.NO_ACL;
         }
@@ -137,7 +139,7 @@ public class EsDefault implements Es {
     }
 
     @Override
-    public List<Document> getDocsWithInvalidAcl(String[] acl, String path,
+    public List<Document> getDocsWithInvalidAcl(Set<String> acl, String path,
             List<String> excludePaths) {
         final Timer.Context context = aclTimer.time();
         try {
@@ -147,7 +149,7 @@ public class EsDefault implements Es {
         }
     }
 
-    private List<Document> getDocsWithInvalidAclTimed(String[] acl,
+    private List<Document> getDocsWithInvalidAclTimed(Set<String> acl,
             String path, List<String> excludePaths) {
         AndFilterBuilder filter = FilterBuilders.andFilter();
         // Looking for a different ACL
@@ -183,15 +185,17 @@ public class EsDefault implements Es {
             log.info(String.format("%d invalid ACL found on ES", hits));
             for (SearchHit hit : response.getHits()) {
                 String aclDoc[];
+                Set<String> aclSet;
                 try {
                     Object[] aclArray = hit.field(ACL_FIELD).getValues()
                             .toArray();
                     aclDoc = Arrays.copyOf(aclArray, aclArray.length,
                             String[].class);
+                    aclSet = new HashSet<>(Arrays.asList(aclDoc));
                 } catch (NullPointerException e) {
-                    aclDoc = Document.NO_ACL;
+                    aclSet = Document.NO_ACL;
                 }
-                Document esDoc = new Document(hit.getId(), aclDoc, hit
+                Document esDoc = new Document(hit.getId(), aclSet, hit
                         .field(PATH_FIELD).getValue().toString());
                 ret.add(esDoc);
             }

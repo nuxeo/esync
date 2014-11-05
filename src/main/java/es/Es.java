@@ -17,7 +17,7 @@ public interface Es {
 
     Document getDocument(String id) throws NoSuchElementException;
 
-    List<Document> getDocsWithInvalidAcl(String[] acl, String path, List<String> excludePaths);
+    List<Document> getDocsWithInvalidAcl(Set<String> acl, String path, List<String> excludePaths);
 
     long getCardinality();
 
