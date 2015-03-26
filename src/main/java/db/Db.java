@@ -18,9 +18,17 @@ public interface Db {
     List<Document> getDocumentWithAcl();
 
     /**
-     * Get the total number of non system documents
+     * Get the total number of documents, excluding proxies, versions and the Root document.
      */
     long getCardinality();
+
+    long getProxyCardinality();
+
+    long getVersionCardinality();
+
+    long getOrphanCardinality();
+
+    Document getDocument(String id);
 
     java.util.Map<String, Long> getTypeCardinality();
 

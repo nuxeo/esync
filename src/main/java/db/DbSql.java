@@ -31,21 +31,26 @@ import db.dialect.DialectFactory;
 
 public class DbSql implements Db {
     private static final Logger log = LoggerFactory.getLogger(DbSql.class);
+
     private static final String DENY_ALL = "-Everyone";
+
     private static final String UNSUPPORTED_ACL = "_UNSUPPORTED_ACL_";
 
     private ESyncConfig config;
+
     private Connection dbConnection;
+
     private Dialect dialect;
-    private final static MetricRegistry registry = SharedMetricRegistries
-            .getOrCreate("main");
+
+    private final static MetricRegistry registry = SharedMetricRegistries.getOrCreate("main");
+
     private final Timer aclTimer = registry.timer("esync.db.acl");
-    private final Timer cardinalityTimer = registry
-            .timer("esync.db.cardinality");
-    private final Timer typeCardinalityTimer = registry
-            .timer("esync.db.type.cardinality");
-    private final Timer documentIdsForTypeTimed = registry
-            .timer("esync.db.type.documentIdsForType");
+
+    private final Timer cardinalityTimer = registry.timer("esync.db.cardinality");
+
+    private final Timer typeCardinalityTimer = registry.timer("esync.db.type.cardinality");
+
+    private final Timer documentIdsForTypeTimed = registry.timer("esync.db.type.documentIdsForType");
 
     @Override
     public void initialize(ESyncConfig config) {
@@ -86,8 +91,9 @@ public class DbSql implements Db {
             } else {
                 ret = new ArrayList<>();
                 do {
-                    String[] acl = decodeAcl(rs.getString(2));
-                    ret.add(new Document(rs.getString(1), acl));
+                    String primaryType = rs.getString(2);
+                    String[] acl = decodeAcl(rs.getString(3));
+                    ret.add(new Document(rs.getString(1), primaryType, acl));
                 } while (rs.next());
             }
             rs.close();
@@ -102,17 +108,68 @@ public class DbSql implements Db {
     public long getCardinality() {
         final Timer.Context context = cardinalityTimer.time();
         try {
-            return getCardinalityTimed();
+            return getDbCount(dialect.getCountQuery());
         } finally {
             context.stop();
         }
     }
 
-    private long getCardinalityTimed() {
+    @Override
+    public long getProxyCardinality() {
+        final Timer.Context context = cardinalityTimer.time();
+        try {
+            return getDbCount(dialect.getProxyCountQuery());
+        } finally {
+            context.stop();
+        }
+    }
+
+    @Override
+    public long getVersionCardinality() {
+        final Timer.Context context = cardinalityTimer.time();
+        try {
+            return getDbCount(dialect.getVersionCountQuery());
+        } finally {
+            context.stop();
+        }
+    }
+
+    @Override
+    public long getOrphanCardinality() {
+        final Timer.Context context = cardinalityTimer.time();
+        try {
+            return getDbCount(dialect.getOrpheanCountQuery());
+        } finally {
+            context.stop();
+        }
+    }
+
+    @Override
+    public Document getDocument(String id) {
+        Document ret = null;
+        PreparedStatement ps;
+        try {
+            ps = getDbConnection().prepareStatement(dialect.getDocumentQuery(id));
+            ResultSet rs = ps.executeQuery();
+            if (rs.next()) {
+                String primaryType = rs.getString(2);
+                String[] acl = decodeAcl(rs.getString(3));
+                ret = new Document(rs.getString(1), primaryType, acl);
+            }
+            rs.close();
+            ps.close();
+        } catch (SQLException e) {
+            throw new RuntimeException(e.getMessage(), e);
+        }
+        return ret;
+
+    }
+
+    private long getDbCount(String query) {
         int count = -1;
         try {
             Statement st = getDbConnection().createStatement();
-            ResultSet rs = st.executeQuery(dialect.getCountQuery());
+            ResultSet rs = st.executeQuery(query);
             while (rs.next()) {
                 count = rs.getInt("count");
             }
@@ -125,8 +182,7 @@ public class DbSql implements Db {
     }
 
     private String[] decodeAcl(String aclString) {
-        ArrayList<String> acl = new ArrayList<>(Arrays.asList(StringUtils
-                .split(aclString, ",")));
+        ArrayList<String> acl = new ArrayList<>(Arrays.asList(StringUtils.split(aclString, ",")));
         // remove trailing -Everyone
         int lastAceIndex = acl.size() - 1;
         if (DENY_ALL.equals(acl.get(lastAceIndex))) {
@@ -198,12 +254,10 @@ public class DbSql implements Db {
 
     private Connection getDbConnection() {
         if (dbConnection == null) {
-            log.debug("Connect to database:" + config.dbUrl() + " from "
-                    + getHostName());
+            log.debug("Connect to database:" + config.dbUrl() + " from " + getHostName());
             try {
                 Class.forName(config.dbDriver());
-                dbConnection = DriverManager.getConnection(config.dbUrl(),
-                        config.dbUser(), config.dbPassword());
+                dbConnection = DriverManager.getConnection(config.dbUrl(), config.dbUser(), config.dbPassword());
             } catch (SQLException e) {
                 log.error(e.getMessage(), e);
                 throw new IllegalArgumentException(e);

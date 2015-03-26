@@ -29,7 +29,7 @@ public class AclChecker extends AbstractChecker {
         compareWithEs(docsWithAcl);
         Node root = buildTree(docsWithAcl);
         if (log.isTraceEnabled()) {
-            printTree(root, 0);
+            // printTree(root, 0);
         }
         checkAclConsistencyRecursive(root);
     }
@@ -54,6 +54,9 @@ public class AclChecker extends AbstractChecker {
             return;
         }
         String path = node.doc.path;
+        if (path == null) {
+            return;
+        }
         Set<String> acl = node.doc.acl;
         List<String> excludePath = new ArrayList<>();
         for (Node child : node.children) {
@@ -62,8 +65,11 @@ public class AclChecker extends AbstractChecker {
         List<Document> invalidDocs = es.getDocsWithInvalidAcl(acl, path,
                 excludePath);
         for (Document esDoc : invalidDocs) {
-            Document dbDoc = new Document(esDoc.id, acl, null);
-            post(new DiffEvent(dbDoc, esDoc, "Invalid ACL found"));
+            Document dbDoc = db.getDocument(esDoc.id);
+            // double check
+            if (! esDoc.equals(dbDoc)) {
+                post(new DiffEvent(dbDoc, esDoc, "Invalid ACL found"));
+            }
         }
     }
 
@@ -78,7 +84,10 @@ public class AclChecker extends AbstractChecker {
             // a parent of a document is on the top of the list
             for (Node potentialAncestor : nodes) {
                 String ancestorPath = potentialAncestor.doc.path;
-                if (path.startsWith(ancestorPath)) {
+                if (ancestorPath == null) {
+                    continue;
+                }
+                if (path != null && path.startsWith(ancestorPath)) {
                     // the one with the longest path is the direct parent
                     if (parent == null
                             || ancestorPath.length() > parent.doc.path.length()) {
@@ -100,6 +109,12 @@ public class AclChecker extends AbstractChecker {
         Collections.sort(docsWithAcl, new Comparator<Document>() {
             @Override
             public int compare(Document a, Document b) {
+                if (a.path == b.path) {
+                    return 0;
+                }
+                if (a.path == null) {
+                    return -1;
+                }
                 return a.path.compareTo(b.path == null ? "NULL" : b.path);
             }
         });
@@ -108,11 +123,15 @@ public class AclChecker extends AbstractChecker {
     private void compareWithEs(List<Document> documents) {
         Document esDoc;
         for (Document doc : documents) {
+            if ("Root".equals(doc.primaryType)) {
+                // root document is not present on ES
+                continue;
+            }
             log.debug(doc.toString());
             try {
                 esDoc = es.getDocument(doc.id);
             } catch (NoSuchElementException e) {
-                post(new MissingEvent(doc.id, "not found in es"));
+                post(new MissingEvent(doc.id, "not found in es, " + doc));
                 continue;
             }
             if (!doc.equals(esDoc)) {

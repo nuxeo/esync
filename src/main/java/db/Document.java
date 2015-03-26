@@ -8,10 +8,12 @@ import java.util.Set;
 import org.apache.commons.lang.StringUtils;
 
 public class Document {
+    private static final String EVERYONE = "Everyone";
     public final String id;
     public Set<String> acl;
     public String path;
     public String parentId;
+    public String primaryType;
 
     static public final Set<String> NO_ACL = Collections.emptySet();
 
@@ -21,14 +23,15 @@ public class Document {
         this.path = path;
     }
 
-    public Document(String id, String acl[]) {
+    public Document(String id, String primarytype, String[] acl) {
         this.id = id;
         this.acl = new HashSet<>(Arrays.asList(acl));
+        this.primaryType = primarytype;
     }
 
     @Override
     public String toString() {
-        return String.format("<doc id=%s acl=%s path=%s parentid=%s />", id,
+        return String.format("<doc id=%s primaryType=%s acl=%s path=%s parentid=%s />", id, primaryType,
                 StringUtils.join(acl, ","), path, parentId);
     }
 
@@ -42,17 +45,32 @@ public class Document {
             return false;
         }
         if (acl != null && !acl.equals(other.acl)) {
+            if (!acl.contains(EVERYONE) || !other.acl.contains(EVERYONE)) {
+                // some db backend factorize any ACLR that contains Everyone to Everyone
+                return false;
+            }
+        }
+        if (path != null && other.path != null && !path.equals(other.path)) {
             return false;
         }
-        if (path != null && !path.equals(other.path)) {
+        if (parentId != null && other.parentId != null && !parentId.equals(other.parentId)) {
             return false;
         }
-        return !(parentId != null && !parentId.equals(other.parentId));
+        return true;
     }
 
     public void merge(Document other) {
-        this.acl = other.acl;
-        this.path = other.path;
-        this.parentId = other.parentId;
+        if (other.acl != null) {
+            this.acl = other.acl;
+        }
+        if (other.path != null) {
+            this.path = other.path;
+        }
+        if (other.parentId != null) {
+            this.parentId = other.parentId;
+        }
+        if (other.primaryType != null) {
+            this.primaryType = other.primaryType;
+        }
     }
 }

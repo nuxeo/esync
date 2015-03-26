@@ -12,8 +12,8 @@ public class DiffEvent extends Event {
 
     public DiffEvent(Document dbDocument, Document esDocument, String message) {
         super(message);
-        this.esDocument = esDocument;
         this.dbDocument = dbDocument;
+        this.esDocument = esDocument;
     }
 
     public Document getDbDocument() {

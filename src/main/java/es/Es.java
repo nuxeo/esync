@@ -21,6 +21,12 @@ public interface Es {
 
     long getCardinality();
 
+    long getProxyCardinality();
+
+    long getVersionCardinality();
+
+    long getOrphanCardinality();
+
     Map<String, Long> getTypeCardinality();
 
     Set<String> getDocumentIdsForType(String type);

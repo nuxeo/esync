@@ -3,7 +3,6 @@ import javax.inject.Singleton;
 import checker.AclChecker;
 import checker.CardinalityChecker;
 import checker.DocumentTypeLister;
-import checker.OrphanLister;
 import checker.TypeCardinalityChecker;
 import com.google.common.eventbus.EventBus;
 
@@ -22,8 +21,7 @@ import es.EsDefault;
         TypeCardinalityChecker.class,
         AclChecker.class,
         CardinalityChecker.class,
-        DocumentTypeLister.class,
-        OrphanLister.class
+        DocumentTypeLister.class
         }, complete = false, library = true)
 public class AppModule {
 
