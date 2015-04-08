@@ -9,6 +9,13 @@ repository and the indexed content in Elasticsearch.
 
 # Install
 
+## Download
+
+Download the `nuxeo-esync-VERSION-capsul-full.jar` from maven:
+https://maven-eu.nuxeo.org/nexus/content/repositories/public-releases/org/nuxeo/tools/nuxeo-esync/
+
+For instance the [1.0 version](https://maven-eu.nuxeo.org/nexus/content/repositories/public-releases/org/nuxeo/tools/nuxeo-esync/1.0/nuxeo-esync-1.0-capsule-full.jar)
+
 ## Building from sources
 
 Create the all in one jar:
