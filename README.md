@@ -11,20 +11,21 @@ repository and the indexed content in Elasticsearch.
 
 ## Download
 
-Download the `nuxeo-esync-VERSION-capsul-full.jar` from maven:
-https://maven-eu.nuxeo.org/nexus/content/repositories/public-releases/org/nuxeo/tools/nuxeo-esync/
-
-For instance the [1.0 version](https://maven-eu.nuxeo.org/nexus/content/repositories/public-releases/org/nuxeo/tools/nuxeo-esync/1.0/nuxeo-esync-1.0-capsule-full.jar)
+Download the `nuxeo-esync-VERSION-capsule-full.jar` from [https://maven.nuxeo.org](https://maven.nuxeo.org/nexus/#nexus-search;gav~~nuxeo-esync~~~capsule-full).
 
 ## Building from sources
 
 Create the all in one jar:
 
-        mvn package
+    mvn package
 
 The jar is located here:
 
-        ./target/nuxeo-esync-VERSION-capsule-full.jar
+    ./target/nuxeo-esync-VERSION-capsule-full.jar
+
+## QA results
+
+[![Build Status](https://qa.nuxeo.org/jenkins/buildStatus/icon?job=tools_esync)](https://qa.nuxeo.org/jenkins/job/tools_esync/)
 
 # Usage
 
@@ -44,7 +45,7 @@ available.
      # using a default conf located in /etc/esync.conf or ~/.esync.conf
      java -jar /path/to/nuxeo-esync-$VERSION-capsule-full.jar
 
-	   # using an another config file
+    # using an another config file
      java -jar /path/to/nuxeo-esync-$VERSION-capsule-full.jar /path/to/config-file.conf
 
      # customizing the log
@@ -92,7 +93,7 @@ False negative cases:
 Checks the number of each document types for documents and versions
 
 False positive cases:
-- this does not garantee that we have the same documents indexed, just the same number for a primarytype.
+- this does not guarantee that we have the same documents indexed, just the same number for a primary type.
 
 False negative cases:
 - some system documents are not indexed and reported as missing type
@@ -119,17 +120,6 @@ False positive cases:
 False negative cases:
 - none
 
-
 # About Nuxeo
 
-Nuxeo provides a modular, extensible Java-based
-[open source software platform for enterprise content management](http://www.nuxeo.com/en/products/ep)
-and packaged applications for
-[document management](http://www.nuxeo.com/en/products/document-management),
-[digital asset management](http://www.nuxeo.com/en/products/dam) and
-[case management](http://www.nuxeo.com/en/products/case-management). Designed
-by developers for developers, the Nuxeo platform offers a modern
-architecture, a powerful plug-in model and extensive packaging
-capabilities for building content applications.
-
-More information on: <http://www.nuxeo.com/>
+Nuxeo dramatically improves how content-based applications are built, managed and deployed, making customers more agile, innovative and successful. Nuxeo provides a next generation, enterprise ready platform for building traditional and cutting-edge content oriented applications. Combining a powerful application development environment with SaaS-based tools and a modular architecture, the Nuxeo Platform and Products provide clear business value to some of the most recognizable brands including Verizon, Electronic Arts, Netflix, Sharp, FICO, the U.S. Navy, and Boeing. Nuxeo is headquartered in New York and Paris. More information is available at www.nuxeo.com.
