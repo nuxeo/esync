@@ -6,7 +6,7 @@ nuxeo.db.jdbc.url=jdbc:postgresql://localhost:5432/nuxeo
 
 ## Elasticsearch access
 elasticsearch.addressList=localhost:9300
-elasticsearch.clusterName=elasticsearch
+elasticsearch.clusterName=elastrix
 elasticsearch.indexName=nuxeo
 
 checker.pool.size=10
