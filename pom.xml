@@ -160,5 +160,10 @@
       </plugin>
     </plugins>
   </build>
+  <profiles>
+    <profile>
+      <id>monitor</id>
+    </profile>
+  </profiles>
 
 </project>
