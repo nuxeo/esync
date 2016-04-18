@@ -34,6 +34,7 @@ The jar is located here:
 Create a `/etc/esync.conf` or `~/.esync.conf` using one of the samples provided :
 - `esync-postgresql.conf.example`
 - `esync-mssql.conf.example`
+- `esync-mongodb.conf.example`
 
 You will need to configure the database and Elasticsearch access.
 
@@ -45,7 +46,7 @@ available.
      # using a default conf located in /etc/esync.conf or ~/.esync.conf
      java -jar /path/to/nuxeo-esync-$VERSION-capsule-full.jar
 
-    # using an another config file
+     # using an another config file
      java -jar /path/to/nuxeo-esync-$VERSION-capsule-full.jar /path/to/config-file.conf
 
      # customizing the log
