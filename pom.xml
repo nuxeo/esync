@@ -131,6 +131,7 @@
             </manifest>
             <manifestEntries>
               <Application-Class>org.nuxeo.tools.esync.Main</Application-Class>
+              <Premain-Class>Capsule</Premain-Class>
               <Min-Java-Version>1.7.0</Min-Java-Version>
               <JVM-Args></JVM-Args>
               <System-Properties></System-Properties>
