@@ -16,6 +16,9 @@
  */
 package org.nuxeo.tools.esync.listener;
 
+import static org.nuxeo.tools.esync.App.ANSI_GREEN;
+import static org.nuxeo.tools.esync.App.ANSI_RESET;
+
 import org.nuxeo.tools.esync.event.MissingEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -28,7 +31,7 @@ public class MissingListener {
 
     @Subscribe
     public void handleEvent(MissingEvent event) {
-        log.error(String.format("MISS: %s, %s", event.getDocId(),
+        log.error(String.format(ANSI_GREEN + "MISS: %s, %s" + ANSI_RESET, event.getDocId(),
                 event.getMessage()));
     }
 }

@@ -16,6 +16,9 @@
  */
 package org.nuxeo.tools.esync.listener;
 
+import static org.nuxeo.tools.esync.App.ANSI_RED;
+import static org.nuxeo.tools.esync.App.ANSI_RESET;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -28,6 +31,6 @@ public class ErrorListener {
 
     @Subscribe
     public void handleEvent(ErrorEvent event) {
-        log.error(event.getMessage());
+        log.error(ANSI_RED + event.getMessage() + ANSI_RESET);
     }
 }
