@@ -176,10 +176,10 @@ public class EsDefault implements Es {
         BoolQueryBuilder boolq = QueryBuilders.boolQuery();
 
         // Looking for a different ACL
-        if (Document.NO_ACL == acl) {
-            boolq.mustNot(QueryBuilders.existsQuery(ACL_FIELD));
-        } else {
+        if (acl != null && acl.size() > 0) {
             boolq.mustNot(QueryBuilders.termQuery(ACL_FIELD, acl));
+        } else {
+            boolq.mustNot(QueryBuilders.existsQuery(ACL_FIELD));
         }
         // Starts with path
         boolq.filter(QueryBuilders.termQuery(CHILDREN_FIELD, path));
