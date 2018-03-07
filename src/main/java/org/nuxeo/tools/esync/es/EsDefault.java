@@ -177,7 +177,9 @@ public class EsDefault implements Es {
 
         // Looking for a different ACL
         if (acl != null && acl.size() > 0) {
-            boolq.mustNot(QueryBuilders.termQuery(ACL_FIELD, acl));
+            for (String eachAcl:acl) {
+                boolq.mustNot(QueryBuilders.termQuery(ACL_FIELD, eachAcl));
+            }
         } else {
             boolq.mustNot(QueryBuilders.existsQuery(ACL_FIELD));
         }
