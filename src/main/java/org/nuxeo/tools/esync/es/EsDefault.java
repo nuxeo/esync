@@ -17,6 +17,7 @@
 package org.nuxeo.tools.esync.es;
 
 import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -27,9 +28,7 @@ import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
-
 import javax.inject.Singleton;
-
 import org.elasticsearch.action.ActionRequestBuilder;
 import org.elasticsearch.action.ActionResponse;
 import org.elasticsearch.action.count.CountRequestBuilder;
@@ -41,26 +40,22 @@ import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.action.search.SearchType;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.client.transport.TransportClient;
-import org.elasticsearch.common.settings.ImmutableSettings;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.transport.InetSocketTransportAddress;
 import org.elasticsearch.common.unit.TimeValue;
-import org.elasticsearch.index.query.AndFilterBuilder;
-import org.elasticsearch.index.query.FilterBuilders;
-import org.elasticsearch.index.query.OrFilterBuilder;
+import org.elasticsearch.index.query.AndQueryBuilder;
+import org.elasticsearch.index.query.OrQueryBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.search.SearchHit;
 import org.elasticsearch.search.aggregations.AggregationBuilders;
 import org.elasticsearch.search.aggregations.bucket.terms.Terms;
+import org.nuxeo.tools.esync.config.ESyncConfig;
+import org.nuxeo.tools.esync.db.Document;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.SharedMetricRegistries;
 import com.codahale.metrics.Timer;
-
-import org.nuxeo.tools.esync.config.ESyncConfig;
-import org.nuxeo.tools.esync.db.Document;
 
 @Singleton
 public class EsDefault implements Es {
@@ -101,18 +96,19 @@ public class EsDefault implements Es {
         synchronized (EsDefault.class) {
             if (clients.incrementAndGet() == 1) {
                 log.debug("Connecting to ES cluster");
-                ImmutableSettings.Builder builder = ImmutableSettings.settingsBuilder().put("cluster.name",
+                Settings.Builder builder = Settings.settingsBuilder().put("cluster.name",
                         config.clusterName()).put("client.transport.sniff", false);
                 Settings settings = builder.build();
                 log.debug("Using settings: " + settings.toDelimitedString(','));
-                TransportClient tClient = new TransportClient(settings);
+                TransportClient tClient = TransportClient.builder().settings(settings).build();
                 String[] addresses = config.addressList().split(",");
                 for (String item : addresses) {
                     String[] address = item.split(":");
                     log.debug("Add transport address: " + item);
                     try {
                         InetAddress inet = InetAddress.getByName(address[0]);
-                        tClient.addTransportAddress(new InetSocketTransportAddress(inet, Integer.parseInt(address[1])));
+                        tClient.addTransportAddress(new InetSocketTransportAddress(
+                                new InetSocketAddress(inet, Integer.parseInt(address[1]))));
                     } catch (UnknownHostException e) {
                         log.error("Unable to resolve host " + address[0], e);
                     }
@@ -168,22 +164,22 @@ public class EsDefault implements Es {
     }
 
     private List<Document> getDocsWithInvalidAclTimed(Set<String> acl, String path, List<String> excludePaths) {
-        AndFilterBuilder filter = FilterBuilders.andFilter();
+        AndQueryBuilder filter = QueryBuilders.andQuery();
         // Looking for a different ACL
         if (Document.NO_ACL == acl) {
-            filter.add(FilterBuilders.notFilter(FilterBuilders.missingFilter(ACL_FIELD).nullValue(true)));
+            filter.add(QueryBuilders.notQuery(QueryBuilders.missingQuery(ACL_FIELD).nullValue(true)));
         } else {
-            filter.add(FilterBuilders.notFilter(FilterBuilders.termFilter(ACL_FIELD, acl)));
+            filter.add(QueryBuilders.notQuery(QueryBuilders.termQuery(ACL_FIELD, acl)));
         }
         // Starts with path
-        filter.add(FilterBuilders.termFilter(CHILDREN_FIELD, path));
+        filter.add(QueryBuilders.termQuery(CHILDREN_FIELD, path));
         if (!excludePaths.isEmpty()) {
             // Excluding paths
-            OrFilterBuilder excludeClause = FilterBuilders.orFilter();
+            OrQueryBuilder excludeClause = QueryBuilders.orQuery();
             for (String excludePath : excludePaths) {
-                excludeClause.add(FilterBuilders.termFilter(CHILDREN_FIELD, excludePath));
+                excludeClause.add(QueryBuilders.termQuery(CHILDREN_FIELD, excludePath));
             }
-            filter.add(FilterBuilders.notFilter(excludeClause));
+            filter.add(QueryBuilders.notQuery(excludeClause));
         }
         SearchRequestBuilder request = getClient().prepareSearch(config.esIndex()).setTypes(DOC_TYPE).setSearchType(
                 SearchType.DFS_QUERY_THEN_FETCH).setSize(config.maxResults()).addFields(ACL_FIELD, PATH_FIELD).setQuery(
@@ -194,7 +190,7 @@ public class EsDefault implements Es {
         long hits = response.getHits().getTotalHits();
         ArrayList<Document> ret = new ArrayList<>((int) hits);
         if (hits > 0) {
-            log.info(String.format("%d docs with potential invalid ACL found on ES", hits));
+            log.info(String.format("%d docs with potential invalid ACL found on ES at %s", hits, path));
             for (SearchHit hit : response.getHits()) {
                 String aclDoc[];
                 Set<String> aclSet;
@@ -225,7 +221,7 @@ public class EsDefault implements Es {
     @Override
     public long getProxyCardinality() {
         CountRequestBuilder request = getClient().prepareCount(config.esIndex()).setTypes(DOC_TYPE).setQuery(
-                QueryBuilders.constantScoreQuery(FilterBuilders.termFilter("ecm:isProxy", "true")));
+                QueryBuilders.constantScoreQuery(QueryBuilders.termQuery("ecm:isProxy", "true")));
         logSearchRequest(request);
         CountResponse response = request.execute().actionGet();
         logSearchResponse(response);
@@ -235,7 +231,7 @@ public class EsDefault implements Es {
     @Override
     public long getVersionCardinality() {
         CountRequestBuilder request = getClient().prepareCount(config.esIndex()).setTypes(DOC_TYPE).setQuery(
-                QueryBuilders.constantScoreQuery(FilterBuilders.termFilter("ecm:isVersion", "true")));
+                QueryBuilders.constantScoreQuery(QueryBuilders.termQuery("ecm:isVersion", "true")));
         logSearchRequest(request);
         CountResponse response = request.execute().actionGet();
         logSearchResponse(response);
@@ -245,7 +241,7 @@ public class EsDefault implements Es {
     @Override
     public long getOrphanCardinality() {
         CountRequestBuilder request = getClient().prepareCount(config.esIndex()).setTypes(DOC_TYPE).setQuery(
-                QueryBuilders.constantScoreQuery(FilterBuilders.missingFilter("ecm:parentId").nullValue(true)));
+                QueryBuilders.constantScoreQuery(QueryBuilders.missingQuery("ecm:parentId").nullValue(true)));
         logSearchRequest(request);
         CountResponse response = request.execute().actionGet();
         logSearchResponse(response);
@@ -265,7 +261,7 @@ public class EsDefault implements Es {
     private Map<String, Long> getTypeCardinalityTimed() {
         LinkedHashMap<String, Long> ret = new LinkedHashMap<>();
         SearchRequestBuilder request = getClient().prepareSearch(config.esIndex()).setSearchType(SearchType.COUNT).setQuery(
-                QueryBuilders.constantScoreQuery(FilterBuilders.notFilter(FilterBuilders.termFilter("ecm:isProxy",
+                QueryBuilders.constantScoreQuery(QueryBuilders.notQuery(QueryBuilders.termQuery("ecm:isProxy",
                         "true")))).addAggregation(
                 AggregationBuilders.terms("primaryType").field("ecm:primaryType").size(0));
         logSearchRequest(request);
@@ -273,7 +269,7 @@ public class EsDefault implements Es {
         logSearchResponse(response);
         Terms terms = response.getAggregations().get("primaryType");
         for (Terms.Bucket term : terms.getBuckets()) {
-            ret.put(term.getKey(), term.getDocCount());
+            ret.put(term.getKeyAsString(), term.getDocCount());
         }
         return ret;
 
@@ -281,9 +277,9 @@ public class EsDefault implements Es {
 
     private long getCardinalityTimed() {
         CountRequestBuilder request = getClient().prepareCount(config.esIndex()).setTypes(DOC_TYPE).setQuery(
-                QueryBuilders.constantScoreQuery(FilterBuilders.notFilter(FilterBuilders.andFilter(
-                        FilterBuilders.termFilter("ecm:isProxy", "true"),
-                        FilterBuilders.termFilter("ecm:isVersion", "true")))));
+                QueryBuilders.constantScoreQuery(QueryBuilders.notQuery(QueryBuilders.andQuery(
+                        QueryBuilders.termQuery("ecm:isProxy", "true"),
+                        QueryBuilders.termQuery("ecm:isVersion", "true")))));
         logSearchRequest(request);
         CountResponse response = request.execute().actionGet();
         logSearchResponse(response);
@@ -303,9 +299,9 @@ public class EsDefault implements Es {
     private Set<String> getDocumentIdsForTypeTimed(String type) {
         Set<String> ret = new HashSet<>();
         SearchRequestBuilder request = getClient().prepareSearch(config.esIndex()).setSearchType(SearchType.SCAN).setQuery(
-                QueryBuilders.constantScoreQuery(FilterBuilders.andFilter(
-                        FilterBuilders.termFilter("ecm:primaryType", type),
-                        FilterBuilders.notFilter(FilterBuilders.termFilter("ecm:isProxy", "true"))))).setScroll(
+                QueryBuilders.constantScoreQuery(QueryBuilders.andQuery(
+                        QueryBuilders.termQuery("ecm:primaryType", type),
+                        QueryBuilders.notQuery(QueryBuilders.termQuery("ecm:isProxy", "true"))))).setScroll(
                 getScrollTime()).setSize(config.getScrollSize()).addField("_uid");
         logSearchRequest(request);
         SearchResponse response = request.execute().actionGet();
