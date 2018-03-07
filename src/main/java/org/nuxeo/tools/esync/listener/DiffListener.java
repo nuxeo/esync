@@ -16,6 +16,9 @@
  */
 package org.nuxeo.tools.esync.listener;
 
+import static org.nuxeo.tools.esync.App.ANSI_BLUE;
+import static org.nuxeo.tools.esync.App.ANSI_RESET;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -30,7 +33,7 @@ public class DiffListener {
 
     @Subscribe
     public void handleEvent(DiffEvent event) {
-        log.error((String.format("DIFF: %s, org.nuxeo.tools.esync.es: %s, %s shard %d",
+        log.error((String.format(ANSI_BLUE + "DIFF: %s, org.nuxeo.tools.esync.es: %s, %s shard %d" + ANSI_RESET,
                 event.getDbDocument(), event.getEsDocument(),
                 event.getMessage(), EsHash.getShard(event.getEsDocument().id))));
     }

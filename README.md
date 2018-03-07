@@ -13,6 +13,14 @@ repository and the indexed content in Elasticsearch.
 
 Download the `nuxeo-esync-VERSION-capsule-full.jar` from [https://maven.nuxeo.org](https://maven.nuxeo.org/nexus/#nexus-search;gav~~nuxeo-esync~~~capsule-full).
 
+## Version Support
+
+| Esync Version | Nuxeo Version | Elasticsearch version|
+| --- | --- |--- |
+| 1.1.X| 7.10 | 1.5.2|
+| 1.2.X| 8.10 | 2.3.5|
+| 2.X| 9.10 | 5.6.4|
+
 ## Building from sources
 
 Create the all in one jar:

@@ -16,10 +16,11 @@
  */
 package org.nuxeo.tools.esync.es;
 
-import java.net.InetAddress;
-import java.net.UnknownHostException;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -27,40 +28,33 @@ import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
-
 import javax.inject.Singleton;
-
-import org.elasticsearch.action.ActionRequestBuilder;
-import org.elasticsearch.action.ActionResponse;
-import org.elasticsearch.action.count.CountRequestBuilder;
-import org.elasticsearch.action.count.CountResponse;
-import org.elasticsearch.action.get.GetRequestBuilder;
+import org.apache.http.HttpHost;
+import org.elasticsearch.action.get.GetRequest;
 import org.elasticsearch.action.get.GetResponse;
-import org.elasticsearch.action.search.SearchRequestBuilder;
+import org.elasticsearch.action.search.SearchRequest;
 import org.elasticsearch.action.search.SearchResponse;
+import org.elasticsearch.action.search.SearchScrollRequest;
 import org.elasticsearch.action.search.SearchType;
-import org.elasticsearch.client.Client;
-import org.elasticsearch.client.transport.TransportClient;
-import org.elasticsearch.common.settings.ImmutableSettings;
-import org.elasticsearch.common.settings.Settings;
-import org.elasticsearch.common.transport.InetSocketTransportAddress;
+import org.elasticsearch.client.RestClient;
+import org.elasticsearch.client.RestHighLevelClient;
 import org.elasticsearch.common.unit.TimeValue;
-import org.elasticsearch.index.query.AndFilterBuilder;
-import org.elasticsearch.index.query.FilterBuilders;
-import org.elasticsearch.index.query.OrFilterBuilder;
+import org.elasticsearch.index.query.BoolQueryBuilder;
+import org.elasticsearch.index.query.QueryBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.search.SearchHit;
+import org.elasticsearch.search.SearchHits;
 import org.elasticsearch.search.aggregations.AggregationBuilders;
 import org.elasticsearch.search.aggregations.bucket.terms.Terms;
+import org.elasticsearch.search.builder.SearchSourceBuilder;
+import org.elasticsearch.search.fetch.subphase.FetchSourceContext;
+import org.nuxeo.tools.esync.config.ESyncConfig;
+import org.nuxeo.tools.esync.db.Document;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.SharedMetricRegistries;
 import com.codahale.metrics.Timer;
-
-import org.nuxeo.tools.esync.config.ESyncConfig;
-import org.nuxeo.tools.esync.db.Document;
 
 @Singleton
 public class EsDefault implements Es {
@@ -73,23 +67,15 @@ public class EsDefault implements Es {
     private static final String PATH_FIELD = "ecm:path";
 
     private static final String CHILDREN_FIELD = "ecm:path.children";
-
-    private ESyncConfig config;
-
-    // client is thread safe and shared between checkers
-    private static TransportClient client;
-
     private final static AtomicInteger clients = new AtomicInteger(0);
-
     private final static MetricRegistry registry = SharedMetricRegistries.getOrCreate("main");
-
     private final static Timer aclTimer = registry.timer("esync.es.acl");
-
     private final static Timer cardinalityTimer = registry.timer("esync.es.cardinality");
-
     private final static Timer typeCardinalityTimer = registry.timer("esync.es.type.cardinality");
-
+    private static RestHighLevelClient client;
+    private static RestClient lowLevelClient;
     private final Timer documentIdsForTypeTimed = registry.timer("esync.es.type.documentIdsForType");
+    private ESyncConfig config;
 
     @Override
     public void initialize(ESyncConfig config) {
@@ -101,23 +87,19 @@ public class EsDefault implements Es {
         synchronized (EsDefault.class) {
             if (clients.incrementAndGet() == 1) {
                 log.debug("Connecting to ES cluster");
-                ImmutableSettings.Builder builder = ImmutableSettings.settingsBuilder().put("cluster.name",
-                        config.clusterName()).put("client.transport.sniff", false);
-                Settings settings = builder.build();
-                log.debug("Using settings: " + settings.toDelimitedString(','));
-                TransportClient tClient = new TransportClient(settings);
-                String[] addresses = config.addressList().split(",");
-                for (String item : addresses) {
-                    String[] address = item.split(":");
-                    log.debug("Add transport address: " + item);
-                    try {
-                        InetAddress inet = InetAddress.getByName(address[0]);
-                        tClient.addTransportAddress(new InetSocketTransportAddress(inet, Integer.parseInt(address[1])));
-                    } catch (UnknownHostException e) {
-                        log.error("Unable to resolve host " + address[0], e);
-                    }
+
+                String[] hosts = config.addressList().split(",");
+                HttpHost[] httpHosts = new HttpHost[hosts.length];
+                int i = 0;
+                for (String host : hosts) {
+                    httpHosts[i++] = HttpHost.create(host);
                 }
-                client = tClient;
+                lowLevelClient = RestClient.builder(httpHosts).setRequestConfigCallback(
+                        requestConfigBuilder -> requestConfigBuilder
+                                .setConnectTimeout(config.connectTimeout())
+                                .setSocketTimeout(config.socketTimeout()))
+                        .setMaxRetryTimeoutMillis(config.maxRetryTimeout()).build();
+                client = new RestHighLevelClient(lowLevelClient);
             }
         }
     }
@@ -125,9 +107,14 @@ public class EsDefault implements Es {
     @Override
     public void close() {
         if (clients.decrementAndGet() == 0) {
-            if (client != null) {
+            if (lowLevelClient != null) {
                 log.debug("Closing es connection");
-                client.close();
+                try {
+                    lowLevelClient.close();
+                } catch (IOException e) {
+                    log.error("Failed to close ES client", e);
+                }
+                lowLevelClient = null;
                 client = null;
             }
         }
@@ -135,26 +122,42 @@ public class EsDefault implements Es {
 
     @Override
     public Document getDocument(String id) throws NoSuchElementException {
-        GetRequestBuilder getRequest = getClient().prepareGet(config.esIndex(), DOC_TYPE, id).setFields(ACL_FIELD,
-                PATH_FIELD);
-        if (log.isDebugEnabled()) {
-            log.debug(String.format("Get path of doc: curl -XGET 'http://localhost:9200/%s/%s/%s?fields=%s'",
-                    config.esIndex(), DOC_TYPE, id, ACL_FIELD));
+
+        try {
+            GetRequest request = new GetRequest(config.esIndex(), DOC_TYPE, id).fetchSourceContext(
+                    new FetchSourceContext(true, new String[]{ACL_FIELD, PATH_FIELD}, null));
+            if (log.isDebugEnabled()) {
+                log.debug(String.format("Get path of doc: curl -XGET 'http://localhost:9200/%s/%s/%s?fields=%s'",
+                        config.esIndex(), DOC_TYPE, id, ACL_FIELD));
+            }
+            GetResponse response = getClient().get(request);
+            if (!response.isExists()) {
+                throw new NoSuchElementException(id + " not found in ES");
+            }
+            Map<String, Object> source = response.getSourceAsMap();
+            Set<String> acl = getAclsFromSource(source);
+            String path = source.get(PATH_FIELD).toString();
+            return new Document(id, acl, path);
+        } catch (IOException e) {
+            log.error("Failed to get document ", e);
+            return null;
         }
-        GetResponse ret = getRequest.execute().actionGet();
-        if (!ret.isExists()) {
-            throw new NoSuchElementException(id + " not found in ES");
-        }
+    }
+
+    protected Set<String> getAclsFromSource(Map<String, Object> source) {
         Set<String> acl;
         try {
-            Object[] aclArray = ret.getField(ACL_FIELD).getValues().toArray();
-            String[] aclStringArray = Arrays.copyOf(aclArray, aclArray.length, String[].class);
-            acl = new HashSet<>(Arrays.asList(aclStringArray));
+            Object aclsObj = source.get(ACL_FIELD);
+            if (aclsObj instanceof List) {
+                acl = new HashSet((List)aclsObj);
+            } else  {
+                log.warn("Unknown acl type "+aclsObj);
+                acl = Document.NO_ACL;
+            }
         } catch (NullPointerException e) {
             acl = Document.NO_ACL;
         }
-        String path = ret.getField(PATH_FIELD).getValue().toString();
-        return new Document(id, acl, path);
+        return acl;
     }
 
     @Override
@@ -168,48 +171,53 @@ public class EsDefault implements Es {
     }
 
     private List<Document> getDocsWithInvalidAclTimed(Set<String> acl, String path, List<String> excludePaths) {
-        AndFilterBuilder filter = FilterBuilders.andFilter();
+
+        SearchRequest searchRequest = searchRequest();
+        BoolQueryBuilder boolq = QueryBuilders.boolQuery();
+
         // Looking for a different ACL
-        if (Document.NO_ACL == acl) {
-            filter.add(FilterBuilders.notFilter(FilterBuilders.missingFilter(ACL_FIELD).nullValue(true)));
+        if (acl != null && acl.size() > 0) {
+            for (String eachAcl:acl) {
+                boolq.mustNot(QueryBuilders.termQuery(ACL_FIELD, eachAcl));
+            }
         } else {
-            filter.add(FilterBuilders.notFilter(FilterBuilders.termFilter(ACL_FIELD, acl)));
+            boolq.mustNot(QueryBuilders.existsQuery(ACL_FIELD));
         }
         // Starts with path
-        filter.add(FilterBuilders.termFilter(CHILDREN_FIELD, path));
+        boolq.filter(QueryBuilders.termQuery(CHILDREN_FIELD, path));
         if (!excludePaths.isEmpty()) {
             // Excluding paths
-            OrFilterBuilder excludeClause = FilterBuilders.orFilter();
             for (String excludePath : excludePaths) {
-                excludeClause.add(FilterBuilders.termFilter(CHILDREN_FIELD, excludePath));
+                boolq.mustNot(QueryBuilders.termQuery(CHILDREN_FIELD, excludePath));
             }
-            filter.add(FilterBuilders.notFilter(excludeClause));
         }
-        SearchRequestBuilder request = getClient().prepareSearch(config.esIndex()).setTypes(DOC_TYPE).setSearchType(
-                SearchType.DFS_QUERY_THEN_FETCH).setSize(config.maxResults()).addFields(ACL_FIELD, PATH_FIELD).setQuery(
-                QueryBuilders.constantScoreQuery(filter));
-        logSearchRequest(request);
-        SearchResponse response = request.execute().actionGet();
-        logSearchResponse(response);
-        long hits = response.getHits().getTotalHits();
-        ArrayList<Document> ret = new ArrayList<>((int) hits);
-        if (hits > 0) {
-            log.info(String.format("%d docs with potential invalid ACL found on ES", hits));
-            for (SearchHit hit : response.getHits()) {
-                String aclDoc[];
-                Set<String> aclSet;
-                try {
-                    Object[] aclArray = hit.field(ACL_FIELD).getValues().toArray();
-                    aclDoc = Arrays.copyOf(aclArray, aclArray.length, String[].class);
-                    aclSet = new HashSet<>(Arrays.asList(aclDoc));
-                } catch (NullPointerException e) {
-                    aclSet = Document.NO_ACL;
+
+        SearchSourceBuilder sourceBuilder = new SearchSourceBuilder()
+                .size(config.maxResults())
+                .fetchSource(new FetchSourceContext(true, new String[]{ACL_FIELD, PATH_FIELD}, null))
+                .query(boolq);
+        searchRequest.source(sourceBuilder);
+
+        logSearchRequest(searchRequest);
+        try {
+            SearchResponse response = getClient().search(searchRequest);
+            logSearchResponse(response);
+            long hits = response.getHits().getTotalHits();
+            List<Document> ret = new ArrayList<>((int) hits);
+            if (hits > 0) {
+                log.info(String.format("%d docs with potential invalid ACL found on ES at %s", hits, path));
+                for (SearchHit hit : response.getHits()) {
+                    Map<String, Object> hitSource = hit.getSourceAsMap();
+                    Set<String> aclSet = getAclsFromSource(hitSource);
+                    Document esDoc = new Document(hit.getId(), aclSet, hitSource.get(PATH_FIELD).toString());
+                    ret.add(esDoc);
                 }
-                Document esDoc = new Document(hit.getId(), aclSet, hit.field(PATH_FIELD).getValue().toString());
-                ret.add(esDoc);
             }
+            return ret;
+        } catch (IOException e) {
+            log.error("Failed to get Docs With Invalid Acl", e);
+            return Collections.emptyList();
         }
-        return ret;
     }
 
     @Override
@@ -222,34 +230,48 @@ public class EsDefault implements Es {
         }
     }
 
+    /**
+     * Count the results of a query
+     */
+    protected long count(QueryBuilder query) {
+        SearchRequest searchRequest = searchRequest().source(new SearchSourceBuilder().size(0).query(query));
+        logSearchRequest(searchRequest);
+        try {
+            SearchResponse response = getClient().search(searchRequest);
+            logSearchResponse(response);
+            return response.getHits().getTotalHits();
+        } catch (IOException e) {
+            log.error("Failed to count documents ", e);
+            return -1;
+        }
+    }
+
+    /**
+     * Creates a search request
+     */
+    protected SearchRequest searchRequest() {
+        return new SearchRequest(config.esIndex()).searchType(SearchType.DFS_QUERY_THEN_FETCH).types(DOC_TYPE);
+    }
+
     @Override
     public long getProxyCardinality() {
-        CountRequestBuilder request = getClient().prepareCount(config.esIndex()).setTypes(DOC_TYPE).setQuery(
-                QueryBuilders.constantScoreQuery(FilterBuilders.termFilter("ecm:isProxy", "true")));
-        logSearchRequest(request);
-        CountResponse response = request.execute().actionGet();
-        logSearchResponse(response);
-        return response.getCount();
+        return count(QueryBuilders.termQuery("ecm:isProxy", "true"));
     }
 
     @Override
     public long getVersionCardinality() {
-        CountRequestBuilder request = getClient().prepareCount(config.esIndex()).setTypes(DOC_TYPE).setQuery(
-                QueryBuilders.constantScoreQuery(FilterBuilders.termFilter("ecm:isVersion", "true")));
-        logSearchRequest(request);
-        CountResponse response = request.execute().actionGet();
-        logSearchResponse(response);
-        return response.getCount();
+        return count(QueryBuilders.termQuery("ecm:isVersion", "true"));
     }
 
     @Override
     public long getOrphanCardinality() {
-        CountRequestBuilder request = getClient().prepareCount(config.esIndex()).setTypes(DOC_TYPE).setQuery(
-                QueryBuilders.constantScoreQuery(FilterBuilders.missingFilter("ecm:parentId").nullValue(true)));
-        logSearchRequest(request);
-        CountResponse response = request.execute().actionGet();
-        logSearchResponse(response);
-        return response.getCount();
+        return count(QueryBuilders.boolQuery().mustNot(QueryBuilders.existsQuery("ecm:parentId")));
+    }
+
+    private long getCardinalityTimed() {
+        return count(QueryBuilders.boolQuery()
+                .mustNot(QueryBuilders.termQuery("ecm:isProxy", "true"))
+                .mustNot(QueryBuilders.termQuery("ecm:isVersion", "true")));
     }
 
     @Override
@@ -263,31 +285,28 @@ public class EsDefault implements Es {
     }
 
     private Map<String, Long> getTypeCardinalityTimed() {
-        LinkedHashMap<String, Long> ret = new LinkedHashMap<>();
-        SearchRequestBuilder request = getClient().prepareSearch(config.esIndex()).setSearchType(SearchType.COUNT).setQuery(
-                QueryBuilders.constantScoreQuery(FilterBuilders.notFilter(FilterBuilders.termFilter("ecm:isProxy",
-                        "true")))).addAggregation(
-                AggregationBuilders.terms("primaryType").field("ecm:primaryType").size(0));
-        logSearchRequest(request);
-        SearchResponse response = request.execute().actionGet();
-        logSearchResponse(response);
-        Terms terms = response.getAggregations().get("primaryType");
-        for (Terms.Bucket term : terms.getBuckets()) {
-            ret.put(term.getKey(), term.getDocCount());
+
+        Map<String, Long> ret = new LinkedHashMap();
+        SearchRequest searchRequest = searchRequest();
+        SearchSourceBuilder sourceBuilder = new SearchSourceBuilder()
+                .size(0)
+                .query(QueryBuilders.boolQuery().mustNot(QueryBuilders.termQuery("ecm:isProxy", "true")))
+                .aggregation(AggregationBuilders.terms("primaryType").field("ecm:primaryType"));
+
+        searchRequest.source(sourceBuilder);
+        logSearchRequest(searchRequest);
+        try {
+            SearchResponse response = getClient().search(searchRequest);
+            logSearchResponse(response);
+
+            Terms terms = response.getAggregations().get("primaryType");
+            for (Terms.Bucket term : terms.getBuckets()) {
+                ret.put(term.getKeyAsString(), term.getDocCount());
+            }
+        } catch (IOException e) {
+            log.error("Failed to get Type Cardinality", e);
         }
         return ret;
-
-    }
-
-    private long getCardinalityTimed() {
-        CountRequestBuilder request = getClient().prepareCount(config.esIndex()).setTypes(DOC_TYPE).setQuery(
-                QueryBuilders.constantScoreQuery(FilterBuilders.notFilter(FilterBuilders.andFilter(
-                        FilterBuilders.termFilter("ecm:isProxy", "true"),
-                        FilterBuilders.termFilter("ecm:isVersion", "true")))));
-        logSearchRequest(request);
-        CountResponse response = request.execute().actionGet();
-        logSearchResponse(response);
-        return response.getCount();
     }
 
     @Override
@@ -301,27 +320,41 @@ public class EsDefault implements Es {
     }
 
     private Set<String> getDocumentIdsForTypeTimed(String type) {
+
         Set<String> ret = new HashSet<>();
-        SearchRequestBuilder request = getClient().prepareSearch(config.esIndex()).setSearchType(SearchType.SCAN).setQuery(
-                QueryBuilders.constantScoreQuery(FilterBuilders.andFilter(
-                        FilterBuilders.termFilter("ecm:primaryType", type),
-                        FilterBuilders.notFilter(FilterBuilders.termFilter("ecm:isProxy", "true"))))).setScroll(
-                getScrollTime()).setSize(config.getScrollSize()).addField("_uid");
-        logSearchRequest(request);
-        SearchResponse response = request.execute().actionGet();
-        logSearchResponse(response);
-        while (true) {
-            response = getClient().prepareSearchScroll(response.getScrollId()).setScroll(getScrollTime()).execute().actionGet();
-            if (log.isTraceEnabled()) {
-                logSearchResponse(response);
+        SearchRequest searchRequest = searchRequest();
+        SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder()
+                .size(config.getScrollSize()).query(QueryBuilders.boolQuery()
+                        .filter(QueryBuilders.termQuery("ecm:primaryType", type))
+                        .mustNot(QueryBuilders.termQuery("ecm:isProxy", "true")));
+
+        searchRequest.scroll(getScrollTime()).source(searchSourceBuilder);
+        logSearchRequest(searchRequest);
+        try {
+            SearchResponse searchResponse = client.search(searchRequest);
+            String scrollId = searchResponse.getScrollId();
+            SearchHits hits = searchResponse.getHits();
+
+            while (hits.getHits().length > 0) {
+                if (log.isTraceEnabled()) {
+                    logSearchResponse(searchResponse);
+                }
+                for (SearchHit hit : hits.getHits()) {
+                    ret.add(hit.getId());
+                }
+                if (ret.size() >= hits.getTotalHits()) {
+                    break;
+                }
+                SearchScrollRequest scrollRequest = new SearchScrollRequest(scrollId);
+                scrollRequest.scroll(getScrollTime());
+                searchResponse = client.searchScroll(scrollRequest);
+                scrollId = searchResponse.getScrollId();
+                hits = searchResponse.getHits();
             }
-            for (SearchHit hit : response.getHits()) {
-                ret.add(hit.getId());
-            }
-            if (response.getHits().getHits().length == 0) {
-                break;
-            }
+        } catch (IOException e) {
+            log.error("Failed to getDocumentIds For Type", e);
         }
+
         return ret;
     }
 
@@ -329,17 +362,17 @@ public class EsDefault implements Es {
         return TimeValue.timeValueMinutes(config.getScrollTime());
     }
 
-    private Client getClient() {
+    private RestHighLevelClient getClient() {
         return client;
     }
 
-    private void logSearchResponse(ActionResponse response) {
+    private void logSearchResponse(SearchResponse response) {
         if (log.isDebugEnabled()) {
             log.debug("Response: " + response.toString());
         }
     }
 
-    private void logSearchRequest(ActionRequestBuilder request) {
+    private void logSearchRequest(SearchRequest request) {
         if (log.isDebugEnabled()) {
             log.debug(String.format("Search query: curl -XGET 'http://localhost:9200/%s/%s/_search?pretty' -d '%s'",
                     config.esIndex(), DOC_TYPE, request.toString()));

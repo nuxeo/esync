@@ -5,8 +5,7 @@ nuxeo.db.driver=org.postgresql.Driver
 nuxeo.db.jdbc.url=jdbc:postgresql://localhost:5432/nuxeo
 
 ## Elasticsearch access
-elasticsearch.addressList=localhost:9300
-elasticsearch.clusterName=elastrix
+elasticsearch.addressList=localhost:9200
 elasticsearch.indexName=nuxeo
 
 checker.pool.size=10
