@@ -173,7 +173,9 @@ public class EsDefault implements Es {
         if (Document.NO_ACL == acl) {
             filter.add(QueryBuilders.notQuery(QueryBuilders.missingQuery(ACL_FIELD).nullValue(true)));
         } else {
-            filter.add(QueryBuilders.notQuery(QueryBuilders.termQuery(ACL_FIELD, acl)));
+            for (String eachAcl:acl) {
+                filter.add(QueryBuilders.notQuery(QueryBuilders.termQuery(ACL_FIELD, eachAcl)));
+            }
         }
         // Starts with path
         filter.add(QueryBuilders.termQuery(CHILDREN_FIELD, path));
