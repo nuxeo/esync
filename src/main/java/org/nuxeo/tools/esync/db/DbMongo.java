@@ -15,6 +15,20 @@ package org.nuxeo.tools.esync.db;/*
  *     bdelbosc
  */
 
+import static java.util.Arrays.asList;
+import static org.nuxeo.tools.esync.es.EsDefault.EXCLUDED_TYPES;
+
+import java.net.InetAddress;
+import java.net.UnknownHostException;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import org.nuxeo.tools.esync.config.ESyncConfig;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import com.mongodb.BasicDBObject;
 import com.mongodb.Block;
 import com.mongodb.MongoClient;
@@ -24,27 +38,12 @@ import com.mongodb.client.AggregateIterable;
 import com.mongodb.client.FindIterable;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
-import org.nuxeo.tools.esync.config.ESyncConfig;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import java.net.InetAddress;
-import java.net.UnknownHostException;
-import java.util.ArrayList;
-
-import static java.util.Arrays.asList;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
 
 /**
  * @since 7.1
  */
 public class DbMongo implements Db {
     private static final Logger log = LoggerFactory.getLogger(DbMongo.class);
-    private static final String ROOT_TYPE = "Root";
     private String uri;
     private String dbName;
     private String collectionName;
@@ -193,7 +192,7 @@ public class DbMongo implements Db {
             public void apply(final org.bson.Document document) {
                 String primaryType = document.getString("_id");
                 long count = document.getInteger("count");
-                if (!ROOT_TYPE.equals(primaryType)) {
+                if (!EXCLUDED_TYPES.contains(primaryType)) {
                     ret.put(primaryType, count);
                 }
             }

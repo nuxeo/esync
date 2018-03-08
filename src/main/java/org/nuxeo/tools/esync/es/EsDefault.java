@@ -61,6 +61,10 @@ import com.codahale.metrics.Timer;
 public class EsDefault implements Es {
     private static final Logger log = LoggerFactory.getLogger(EsDefault.class);
 
+    public static final List<String> EXCLUDED_TYPES = Arrays.asList("Root", "AdministrativeStatus",
+            "AdministrativeStatusContainer","TemplateRoot","TaskRoot","ManagementRoot","DocumentRouteModelsRoot",
+            "WorkspaceRoot","SectionRoot");
+
     private static final String DOC_TYPE = "doc";
 
     private static final String ACL_FIELD = "ecm:acl";
@@ -260,9 +264,15 @@ public class EsDefault implements Es {
 
     private Map<String, Long> getTypeCardinalityTimed() {
         LinkedHashMap<String, Long> ret = new LinkedHashMap<>();
+
+        //This doesn't work
+        AndQueryBuilder andQuery = QueryBuilders.andQuery()
+                .add(QueryBuilders.notQuery(QueryBuilders.termQuery("ecm:isProxy", "true")));
+        EXCLUDED_TYPES.forEach(lang -> {
+            andQuery.add(QueryBuilders.notQuery(QueryBuilders.termQuery("ecm:primaryType", lang)));
+        });
         SearchRequestBuilder request = getClient().prepareSearch(config.esIndex()).setSearchType(SearchType.COUNT).setQuery(
-                QueryBuilders.constantScoreQuery(QueryBuilders.notQuery(QueryBuilders.termQuery("ecm:isProxy",
-                        "true")))).addAggregation(
+                QueryBuilders.constantScoreQuery(andQuery)).addAggregation(
                 AggregationBuilders.terms("primaryType").field("ecm:primaryType").size(0));
         logSearchRequest(request);
         SearchResponse response = request.execute().actionGet();
