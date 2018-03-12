@@ -36,6 +36,7 @@ import org.nuxeo.tools.esync.event.MissingEvent;
 public class AclChecker extends AbstractChecker {
 
     private static final Logger log = LoggerFactory.getLogger(AclChecker.class);
+    public static final int MAX_PATHS = 999;
 
     @Override
     void check() {
@@ -78,15 +79,22 @@ public class AclChecker extends AbstractChecker {
         for (Node child : node.children) {
             excludePath.add(child.doc.path);
         }
-        List<Document> invalidDocs = es.getDocsWithInvalidAcl(acl, path,
-                excludePath);
-        for (Document esDoc : invalidDocs) {
-            Document dbDoc = db.getDocument(esDoc.id);
-            // double check
-            if (! esDoc.equals(dbDoc)) {
-                post(new DiffEvent(dbDoc, esDoc, "Invalid ACL found"));
+        if (excludePath.size() < MAX_PATHS) {
+            List<Document> invalidDocs = es.getDocsWithInvalidAcl(acl, path,
+                    excludePath);
+            for (Document esDoc : invalidDocs) {
+                Document dbDoc = db.getDocument(esDoc.id);
+                // double check
+                if (! esDoc.equals(dbDoc)) {
+                    post(new DiffEvent(dbDoc, esDoc, "Invalid ACL found"));
+                }
+            }
+        } else {
+            if (log.isDebugEnabled()) {
+                log.debug(String.format("Skipping %s because it has %s children", path, excludePath.size()));
             }
         }
+
     }
 
     private Node buildTree(List<Document> documents) {
