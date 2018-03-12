@@ -16,6 +16,10 @@
  */
 package org.nuxeo.tools.esync.db.dialect;
 
+import static org.nuxeo.tools.esync.es.EsDefault.EXCLUDED_TYPES;
+
+import java.util.stream.Collectors;
+
 public abstract class Dialect {
     // Some hints:
     // - The misc table contains version entries but no proxy
@@ -26,7 +30,7 @@ public abstract class Dialect {
     private static final String COUNT_PROXY_QUERY = "SELECT count(1) AS count FROM proxies";
     private static final String COUNT_VERSION_QUERY = "SELECT count(1) AS count FROM versions";
     private static final String COUNT_ORPHEAN_QUERY = "SELECT count(1) AS count FROM misc m JOIN hierarchy h ON m.id = h.id WHERE h.parentid IS NULL AND h.isversion IS NULL";
-    private static final String TYPE_QUERY = "SELECT primarytype, count(1) AS count FROM hierarchy h JOIN misc m ON m.id = h.id GROUP BY primarytype ORDER BY 2 DESC";
+    private static final String TYPE_QUERY = "SELECT primarytype, count(1) AS count FROM hierarchy h JOIN misc m ON m.id = h.id WHERE primarytype NOT IN (%s) GROUP BY primarytype ORDER BY 2 DESC";
     private static final String DOCUMENT_IDS_FOR_TYPE = "SELECT id FROM hierarchy WHERE primarytype = '%s'";
 
     public abstract String getAclQuery();
@@ -50,7 +54,9 @@ public abstract class Dialect {
     }
 
     public String getTypeQuery() {
-        return TYPE_QUERY;
+        return String.format(TYPE_QUERY,
+                EXCLUDED_TYPES.stream().map(s -> "'" + s + "'").collect(Collectors.joining(","))
+        );
     }
 
     public String getDocumentIdsForType(String type) {
