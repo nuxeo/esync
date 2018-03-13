@@ -3,9 +3,8 @@ nuxeo.mongodb.server=mongodb://localhost:27017
 nuxeo.mongodb.dbname=nuxeo
 nuxeo.mongodb.collection=default
 
-elasticsearch.addressList=localhost:9300
+elasticsearch.addressList=localhost:9200
 elasticsearch.indexName=nuxeo
-elasticsearch.clusterName=elastrix
 
 checker.pool.size=10
 

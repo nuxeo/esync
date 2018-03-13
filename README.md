@@ -21,6 +21,7 @@ Download the `nuxeo-esync-VERSION-capsule-full.jar` from [https://maven.nuxeo.or
 | 2.0.X| 8.10 | 2.3.5|
 | 3.0.X| 9.10 | 5.6.4|
 
+From esync version 3 the Elasticsearch rest client is used instead of the transport client.
 ## Building from sources
 
 Create the all in one jar:
@@ -129,6 +130,9 @@ False positive cases:
 
 False negative cases:
 - none
+
+# License
+[Apache License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0.html)
 
 # About Nuxeo
 

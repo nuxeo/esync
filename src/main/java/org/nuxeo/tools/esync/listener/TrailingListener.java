@@ -16,6 +16,9 @@
  */
 package org.nuxeo.tools.esync.listener;
 
+import static org.nuxeo.tools.esync.App.ANSI_PURPLE;
+import static org.nuxeo.tools.esync.App.ANSI_RESET;
+
 import org.nuxeo.tools.esync.event.TrailingEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -28,7 +31,7 @@ public class TrailingListener {
 
     @Subscribe
     public void handleEvent(TrailingEvent event) {
-        log.error(String.format("REMOVE: %s, %s", event.getDocId(),
+        log.error(String.format(ANSI_PURPLE + "REMOVE: %s, %s" + ANSI_RESET, event.getDocId(),
                 event.getMessage()));
     }
 }
