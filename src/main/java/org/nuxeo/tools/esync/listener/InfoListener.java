@@ -16,6 +16,9 @@
  */
 package org.nuxeo.tools.esync.listener;
 
+import static org.nuxeo.tools.esync.App.ANSI_BLUE;
+import static org.nuxeo.tools.esync.App.ANSI_RESET;
+
 import org.nuxeo.tools.esync.event.InfoEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -28,6 +31,6 @@ public class InfoListener {
 
     @Subscribe
     public void handleEvent(InfoEvent event) {
-        log.info(event.getMessage());
+        log.info(ANSI_BLUE + event.getMessage() + ANSI_RESET);
     }
 }

@@ -65,11 +65,11 @@ public interface ESyncConfig extends Config {
     @Key("elasticsearch.addressList")
     String addressList();
 
-    /**
-     * The name of the Elasticsearch cluster
-     */
-    @Key("elasticsearch.clusterName")
-    String clusterName();
+//    /**
+//     * The name of the Elasticsearch cluster
+//     */
+//    @Key("elasticsearch.clusterName")
+//    String clusterName();
 
     /**
      * Limit the number of documents returned by Elasticsearch
@@ -77,6 +77,18 @@ public interface ESyncConfig extends Config {
     @DefaultValue("1000")
     @Key("elasticsearch.maxResults")
     int maxResults();
+
+    @DefaultValue("1000")
+    @Key("elasticsearch.connectTimeout")
+    int connectTimeout();
+
+    @DefaultValue("30000")
+    @Key("elasticsearch.socketTimeout")
+    int socketTimeout();
+
+    @DefaultValue("30000")
+    @Key("elasticsearch.maxRetryTimeout")
+    int maxRetryTimeout();
 
     /**
      * Size of the pool of thread running the checkers
@@ -96,7 +108,7 @@ public interface ESyncConfig extends Config {
     @Key("checker.scrollTimeMinute")
     long getScrollTime();
 
-    @DefaultValue("100")
+    @DefaultValue("500")
     @Key("checker.scrollSize")
     int getScrollSize();
 
