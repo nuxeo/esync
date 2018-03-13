@@ -13,6 +13,14 @@ repository and the indexed content in Elasticsearch.
 
 Download the `nuxeo-esync-VERSION-capsule-full.jar` from [https://maven.nuxeo.org](https://maven.nuxeo.org/nexus/#nexus-search;gav~~nuxeo-esync~~~capsule-full).
 
+## Version Support
+
+| Esync Version | Nuxeo Version | Elasticsearch version|
+| --- | --- |--- |
+| 1.1.X| 7.10 | 1.5.2|
+| 2.0.X| 8.10 | 2.3.5|
+| 3.0.X| 9.10 | 5.6.4|
+
 ## Building from sources
 
 Create the all in one jar:
@@ -62,8 +70,9 @@ default log file is in `/tmp/trace.log`.
 The tool runs concurrently different checkers.
 
 Checkers compare the reference database aka **expected** with the Elasticsearch content aka **actual**.
+You should run a full re-index on Elasticsearch before running the tool.
 
-They report different things:
+Checkers report different things:
 
 - Errors like a different number of documents, total or per document type
 - Missing or spurious document types in Elasticsearch
