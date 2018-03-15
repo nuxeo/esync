@@ -289,9 +289,7 @@ public class EsDefault implements Es {
 
     private long getCardinalityTimed() {
         CountRequestBuilder request = getClient().prepareCount(config.esIndex()).setTypes(DOC_TYPE).setQuery(
-                QueryBuilders.constantScoreQuery(QueryBuilders.notQuery(QueryBuilders.andQuery(
-                        QueryBuilders.termQuery("ecm:isProxy", "true"),
-                        QueryBuilders.termQuery("ecm:isVersion", "true")))));
+                QueryBuilders.constantScoreQuery(QueryBuilders.termQuery("ecm:isVersion", "false")));
         logSearchRequest(request);
         CountResponse response = request.execute().actionGet();
         logSearchResponse(response);

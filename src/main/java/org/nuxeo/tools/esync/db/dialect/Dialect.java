@@ -26,7 +26,7 @@ public abstract class Dialect {
     // - The Root document is not present in the misc table
     // - versions are orphan (parentid is null)
     // - proxies hold a primaryType set to ecm:proxy
-    private static final String COUNT_QUERY = "SELECT count(1) AS count FROM misc m JOIN hierarchy h ON m.id = h.id WHERE isversion IS NULL AND primarytype!='Root'";
+    private static final String COUNT_QUERY = "SELECT count(1) AS count FROM misc m JOIN hierarchy h ON m.id = h.id WHERE isversion IS NULL";
     private static final String COUNT_PROXY_QUERY = "SELECT count(1) AS count FROM proxies";
     private static final String COUNT_VERSION_QUERY = "SELECT count(1) AS count FROM versions";
     private static final String COUNT_ORPHEAN_QUERY = "SELECT count(1) AS count FROM misc m JOIN hierarchy h ON m.id = h.id WHERE h.parentid IS NULL AND h.isversion IS NULL";
