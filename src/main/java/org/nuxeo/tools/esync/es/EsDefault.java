@@ -272,9 +272,7 @@ public class EsDefault implements Es {
     }
 
     private long getCardinalityTimed() {
-        return count(QueryBuilders.boolQuery()
-                .mustNot(QueryBuilders.termQuery("ecm:isProxy", "true"))
-                .mustNot(QueryBuilders.termQuery("ecm:isVersion", "true")));
+        return count(QueryBuilders.termQuery("ecm:isVersion", "false"));
     }
 
     @Override
