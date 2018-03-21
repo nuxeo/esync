@@ -27,7 +27,7 @@ public class CardinalityChecker extends AbstractChecker {
     void check() {
         long esCount = es.getCardinality();
         long dbCount = db.getCardinality();
-        compare(esCount, dbCount, "documents (except: versions, proxies and Root)");
+        compare(esCount, dbCount, "documents (except: versions, internal types)");
         esCount = es.getProxyCardinality();
         dbCount = db.getProxyCardinality();
         compare(esCount, dbCount, "proxy documents");
@@ -36,7 +36,7 @@ public class CardinalityChecker extends AbstractChecker {
         compare(esCount, dbCount, "version documents");
         esCount = es.getOrphanCardinality();
         dbCount = db.getOrphanCardinality();
-        compare(esCount, dbCount, "orphan documents (except: versions)");
+        compare(esCount, dbCount, "orphan documents (except: versions, internal types)");
     }
 
     private void compare(long esCount, long dbCount, String message) {
