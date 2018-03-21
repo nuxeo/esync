@@ -272,7 +272,9 @@ public class EsDefault implements Es {
 
     @Override
     public long getOrphanCardinality() {
-        return count(QueryBuilders.boolQuery().mustNot(QueryBuilders.existsQuery("ecm:parentId")));
+        return count(QueryBuilders.boolQuery()
+                                  .filter(QueryBuilders.termQuery("ecm:isVersion", "false"))
+                                  .mustNot(QueryBuilders.existsQuery("ecm:parentId")));
     }
 
     private long getCardinalityTimed() {
