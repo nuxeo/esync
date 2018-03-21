@@ -251,7 +251,9 @@ public class EsDefault implements Es {
     @Override
     public long getOrphanCardinality() {
         CountRequestBuilder request = getClient().prepareCount(config.esIndex()).setTypes(DOC_TYPE).setQuery(
-                QueryBuilders.constantScoreQuery(QueryBuilders.missingQuery("ecm:parentId").nullValue(true)));
+                QueryBuilders.constantScoreQuery(QueryBuilders.andQuery(
+                        QueryBuilders.termQuery("ecm:isVersion", "false"),
+                        QueryBuilders.missingQuery("ecm:parentId").nullValue(true))));
         logSearchRequest(request);
         CountResponse response = request.execute().actionGet();
         logSearchResponse(response);
