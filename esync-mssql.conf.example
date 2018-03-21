@@ -10,6 +10,6 @@ checker.pool.size=10
 
 ## Skip these checkers
 ## Especially the AclChecker must be disabled if you have lots of ACL and want a quick feedback
-#checker.blackList=AclChecker
+checker.blackList=AclChecker
 
 
