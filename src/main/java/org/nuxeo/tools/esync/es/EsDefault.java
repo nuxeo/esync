@@ -61,7 +61,11 @@ import com.codahale.metrics.Timer;
 public class EsDefault implements Es {
     private static final Logger log = LoggerFactory.getLogger(EsDefault.class);
 
+    public static final List<String> INTERNAL_TYPES = Arrays
+            .asList("MailMessage", "CommentRelation", "Tagging", "UserRegistrationContainer");
+
     public static final List<String> EXCLUDED_TYPES = Arrays.asList("Root", "AdministrativeStatus",
+            "MailMessage", "CommentRelation", "Tagging", "UserRegistrationContainer",
             "AdministrativeStatusContainer","TemplateRoot","TaskRoot","ManagementRoot","DocumentRouteModelsRoot",
             "WorkspaceRoot","SectionRoot");
 
