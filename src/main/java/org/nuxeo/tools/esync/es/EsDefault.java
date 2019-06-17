@@ -73,6 +73,9 @@ public class EsDefault implements Es {
 
     private static final String PATH_FIELD = "ecm:path";
 
+    // SUPINT-1466 : limit to MAX_DOCUMENT_TYPES (instead of implicitly 10) the number of document types supported
+    private static final int MAX_DOCUMENT_TYPES = 10000;
+
     private static final String CHILDREN_FIELD = "ecm:path.children";
     private final static AtomicInteger clients = new AtomicInteger(0);
     private final static MetricRegistry registry = SharedMetricRegistries.getOrCreate("main");
@@ -302,7 +305,7 @@ public class EsDefault implements Es {
         SearchSourceBuilder sourceBuilder = new SearchSourceBuilder()
                 .size(0)
                 .query(boolq.mustNot(QueryBuilders.termQuery("ecm:isProxy", "true")))
-                .aggregation(AggregationBuilders.terms("primaryType").field("ecm:primaryType"));
+                .aggregation(AggregationBuilders.terms("primaryType").size(MAX_DOCUMENT_TYPES).field("ecm:primaryType"));
         searchRequest.source(sourceBuilder);
         logSearchRequest(searchRequest);
         try {
