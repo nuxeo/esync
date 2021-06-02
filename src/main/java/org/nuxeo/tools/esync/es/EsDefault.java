@@ -17,6 +17,11 @@
 package org.nuxeo.tools.esync.es;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.security.GeneralSecurityException;
+import java.security.KeyStore;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -27,15 +32,26 @@ import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
+
 import javax.inject.Singleton;
+import javax.net.ssl.SSLContext;
+
+import org.apache.commons.lang.StringUtils;
 import org.apache.http.HttpHost;
+import org.apache.http.auth.AuthScope;
+import org.apache.http.auth.UsernamePasswordCredentials;
+import org.apache.http.impl.client.BasicCredentialsProvider;
+import org.apache.http.ssl.SSLContextBuilder;
+import org.apache.http.ssl.SSLContexts;
 import org.elasticsearch.action.get.GetRequest;
 import org.elasticsearch.action.get.GetResponse;
 import org.elasticsearch.action.search.SearchRequest;
 import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.action.search.SearchScrollRequest;
 import org.elasticsearch.action.search.SearchType;
+import org.elasticsearch.client.RequestOptions;
 import org.elasticsearch.client.RestClient;
+import org.elasticsearch.client.RestClientBuilder;
 import org.elasticsearch.client.RestHighLevelClient;
 import org.elasticsearch.common.unit.TimeValue;
 import org.elasticsearch.index.query.BoolQueryBuilder;
@@ -51,6 +67,7 @@ import org.nuxeo.tools.esync.config.ESyncConfig;
 import org.nuxeo.tools.esync.db.Document;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.SharedMetricRegistries;
 import com.codahale.metrics.Timer;
@@ -83,7 +100,6 @@ public class EsDefault implements Es {
     private final static Timer cardinalityTimer = registry.timer("esync.es.cardinality");
     private final static Timer typeCardinalityTimer = registry.timer("esync.es.type.cardinality");
     private static RestHighLevelClient client;
-    private static RestClient lowLevelClient;
     private final Timer documentIdsForTypeTimed = registry.timer("esync.es.type.documentIdsForType");
     private ESyncConfig config;
 
@@ -104,27 +120,81 @@ public class EsDefault implements Es {
                 for (String host : hosts) {
                     httpHosts[i++] = HttpHost.create(host);
                 }
-                lowLevelClient = RestClient.builder(httpHosts).setRequestConfigCallback(
-                        requestConfigBuilder -> requestConfigBuilder
-                                .setConnectTimeout(config.connectTimeout())
-                                .setSocketTimeout(config.socketTimeout()))
-                        .setMaxRetryTimeoutMillis(config.maxRetryTimeout()).build();
-                client = new RestHighLevelClient(lowLevelClient);
+                RestClientBuilder builder = RestClient.builder(httpHosts)
+                                                      .setRequestConfigCallback(
+                                                              requestConfigBuilder -> requestConfigBuilder.setConnectTimeout(
+                                                                      config.connectTimeout())
+                                                                                                          .setSocketTimeout(
+                                                                                                                  config.socketTimeout()))
+                                                      .setMaxRetryTimeoutMillis(config.maxRetryTimeout());
+                BasicCredentialsProvider credentialsProvider = getCredentialsProvider();
+                SSLContext sslContext = getSslContext();
+                builder.setHttpClientConfigCallback(httpClientBuilder -> {
+                    httpClientBuilder.setSSLContext(sslContext);
+                    httpClientBuilder.setDefaultCredentialsProvider(credentialsProvider);
+                    return httpClientBuilder;
+                });
+                client = new RestHighLevelClient(builder);
             }
         }
     }
 
-    @Override
-    public void close() {
+    protected BasicCredentialsProvider getCredentialsProvider() {
+        if (config.elasticUsername() == null) {
+            return null;
+        }
+        BasicCredentialsProvider credentialsProvider = new BasicCredentialsProvider();
+        credentialsProvider.setCredentials(AuthScope.ANY,
+                new UsernamePasswordCredentials(config.elasticUsername(), config.elasticPassword()));
+        return credentialsProvider;
+    }
+
+    protected SSLContext getSslContext() {
+        try {
+            KeyStore trustStore = loadKeyStore(config.trustStorePath(), config.trustStorePassword(),
+                    config.trustStoreType());
+            KeyStore keyStore = loadKeyStore(config.keyStorePath(), config.keyStorePassword(), config.keyStoreType());
+            if (trustStore == null && keyStore == null) {
+                return null;
+            }
+            SSLContextBuilder sslContextBuilder = SSLContexts.custom();
+            if (trustStore != null) {
+                sslContextBuilder.loadTrustMaterial(trustStore, null);
+            }
+            if (keyStore != null) {
+                sslContextBuilder.loadKeyMaterial(keyStore, StringUtils.isBlank(config.keyStorePassword()) ?
+                        null :
+                        config.keyStorePassword().toCharArray());
+            }
+            return sslContextBuilder.build();
+        } catch (GeneralSecurityException | IOException e) {
+            throw new IllegalArgumentException("Cannot setup SSL for RestClient: " + config, e);
+        }
+    }
+
+    protected KeyStore loadKeyStore(String path, String password, String type)
+            throws GeneralSecurityException, IOException {
+        if (StringUtils.isBlank(path)) {
+            return null;
+        }
+        String keyStoreType = StringUtils.defaultIfBlank(type, KeyStore.getDefaultType());
+        KeyStore keyStore = KeyStore.getInstance(keyStoreType);
+        char[] passwordChars = StringUtils.isBlank(password) ? null : password.toCharArray();
+        try (InputStream is = Files.newInputStream(Paths.get(path))) {
+            keyStore.load(is, passwordChars);
+        }
+        return keyStore;
+    }
+
+    @Override public void close() {
         if (clients.decrementAndGet() == 0) {
-            if (lowLevelClient != null) {
+            if (client != null) {
                 log.debug("Closing es connection");
                 try {
-                    lowLevelClient.close();
+                    client.close();
                 } catch (IOException e) {
                     log.error("Failed to close ES client", e);
                 }
-                lowLevelClient = null;
                 client = null;
             }
         }
@@ -140,7 +210,7 @@ public class EsDefault implements Es {
                 log.debug(String.format("Get path of doc: curl -XGET 'http://localhost:9200/%s/%s/%s?fields=%s'",
                         config.esIndex(), DOC_TYPE, id, ACL_FIELD));
             }
-            GetResponse response = getClient().get(request);
+            GetResponse response = getClient().get(request, RequestOptions.DEFAULT);
             if (!response.isExists()) {
                 throw new NoSuchElementException(id + " not found in ES");
             }
@@ -210,7 +280,7 @@ public class EsDefault implements Es {
 
         logSearchRequest(searchRequest);
         try {
-            SearchResponse response = getClient().search(searchRequest);
+            SearchResponse response = getClient().search(searchRequest, RequestOptions.DEFAULT);
             logSearchResponse(response);
             long hits = response.getHits().getTotalHits();
             List<Document> ret = new ArrayList<>((int) hits);
@@ -247,7 +317,7 @@ public class EsDefault implements Es {
         SearchRequest searchRequest = searchRequest().source(new SearchSourceBuilder().size(0).query(query));
         logSearchRequest(searchRequest);
         try {
-            SearchResponse response = getClient().search(searchRequest);
+            SearchResponse response = getClient().search(searchRequest, RequestOptions.DEFAULT);
             logSearchResponse(response);
             return response.getHits().getTotalHits();
         } catch (IOException e) {
@@ -299,9 +369,7 @@ public class EsDefault implements Es {
         Map<String, Long> ret = new LinkedHashMap();
         SearchRequest searchRequest = searchRequest();
         BoolQueryBuilder boolq = QueryBuilders.boolQuery();
-        EXCLUDED_TYPES.forEach(lang -> {
-            boolq.mustNot(QueryBuilders.termQuery("ecm:primaryType", lang));
-        });
+        EXCLUDED_TYPES.forEach(lang -> boolq.mustNot(QueryBuilders.termQuery("ecm:primaryType", lang)));
         SearchSourceBuilder sourceBuilder = new SearchSourceBuilder()
                 .size(0)
                 .query(boolq.mustNot(QueryBuilders.termQuery("ecm:isProxy", "true")))
@@ -309,7 +377,7 @@ public class EsDefault implements Es {
         searchRequest.source(sourceBuilder);
         logSearchRequest(searchRequest);
         try {
-            SearchResponse response = getClient().search(searchRequest);
+            SearchResponse response = getClient().search(searchRequest, RequestOptions.DEFAULT);
             logSearchResponse(response);
 
             Terms terms = response.getAggregations().get("primaryType");
@@ -344,7 +412,7 @@ public class EsDefault implements Es {
         searchRequest.scroll(getScrollTime()).source(searchSourceBuilder);
         logSearchRequest(searchRequest);
         try {
-            SearchResponse searchResponse = client.search(searchRequest);
+            SearchResponse searchResponse = client.search(searchRequest, RequestOptions.DEFAULT);
             String scrollId = searchResponse.getScrollId();
             SearchHits hits = searchResponse.getHits();
 
@@ -360,7 +428,7 @@ public class EsDefault implements Es {
                 }
                 SearchScrollRequest scrollRequest = new SearchScrollRequest(scrollId);
                 scrollRequest.scroll(getScrollTime());
-                searchResponse = client.searchScroll(scrollRequest);
+                searchResponse = client.scroll(scrollRequest, RequestOptions.DEFAULT);
                 scrollId = searchResponse.getScrollId();
                 hits = searchResponse.getHits();
             }

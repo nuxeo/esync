@@ -20,8 +20,10 @@ Download the `nuxeo-esync-VERSION-capsule-full.jar` from [https://maven.nuxeo.or
 | 1.1.X| 7.10 | 1.5.2|
 | 2.0.X| 8.10 | 2.3.5|
 | 3.0.X| 9.10 | 5.6.4|
+| 4.0.X| 10.10 | 6.5.3|
 
 From esync version 3 the Elasticsearch rest client is used instead of the transport client.
+
 ## Building from sources
 
 Create the all in one jar:
@@ -51,6 +53,8 @@ Refer to the [source for the full list of options](https://github.com/bdelbosc/e
 available.
 
 ## Invocation
+
+Esync **requires Java 8** to be run:
 
      # using a default conf located in /etc/esync.conf or ~/.esync.conf
      java -jar /path/to/nuxeo-esync-$VERSION-capsule-full.jar

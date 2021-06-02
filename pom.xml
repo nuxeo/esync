@@ -3,7 +3,7 @@
 
   <groupId>org.nuxeo.tools</groupId>
   <artifactId>nuxeo-esync</artifactId>
-  <version>3.0.1-SNAPSHOT</version>
+  <version>4.0.0-SNAPSHOT</version>
 
   <dependencies>
     <dependency>
@@ -39,7 +39,7 @@
     <dependency>
       <groupId>org.postgresql</groupId>
       <artifactId>postgresql</artifactId>
-      <version>9.2-1002-jdbc4</version>
+      <version>42.2.5</version>
     </dependency>
     <dependency>
       <groupId>mysql</groupId>
@@ -49,7 +49,7 @@
     <dependency>
       <groupId>org.mongodb</groupId>
       <artifactId>mongo-java-driver</artifactId>
-      <version>3.2.2</version>
+      <version>3.12.1</version>
     </dependency>
     <dependency>
       <groupId>net.sourceforge.jtds</groupId>
@@ -59,7 +59,7 @@
     <dependency>
       <groupId>org.elasticsearch.client</groupId>
       <artifactId>elasticsearch-rest-high-level-client</artifactId>
-      <version>5.6.4</version>
+      <version>6.5.3</version>
     </dependency>
     <dependency>
       <groupId>co.paralleluniverse</groupId>
