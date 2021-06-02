@@ -120,7 +120,7 @@ public class DbMongo implements Db {
     public long getCardinality() {
         MongoCollection<org.bson.Document> table = getMongoCollection();
         // The Root document is not returned by Es or VCS but by Mongo
-        return table.count() - 1;
+        return table.countDocuments(new BasicDBObject("ecm:isVersion", new BasicDBObject("$ne", true))) - 1;
     }
 
     @Override

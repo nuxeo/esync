@@ -5,6 +5,15 @@ nuxeo.mongodb.collection=default
 
 elasticsearch.addressList=localhost:9200
 elasticsearch.indexName=nuxeo
+#elasticsearch.restClient.username=
+#elasticsearch.restClient.password=
+#elasticsearch.restClient.truststore.path=
+#elasticsearch.restClient.truststore.password=
+#elasticsearch.restClient.truststore.type=
+#elasticsearch.restClient.keystore.path=
+#elasticsearch.restClient.keystore.password=
+#elasticsearch.restClient.keystore.type=
+
 
 checker.pool.size=10
 

@@ -65,11 +65,32 @@ public interface ESyncConfig extends Config {
     @Key("elasticsearch.addressList")
     String addressList();
 
-//    /**
-//     * The name of the Elasticsearch cluster
-//     */
-//    @Key("elasticsearch.clusterName")
-//    String clusterName();
+    /**
+     * Secure elasticsearch access
+     */
+    @Key("elasticsearch.restClient.username")
+    String elasticUsername();
+
+    @Key("elasticsearch.restClient.password")
+    String elasticPassword();
+
+    @Key("elasticsearch.restClient.truststore.path")
+    String trustStorePath();
+
+    @Key("elasticsearch.restClient.truststore.password")
+    String trustStorePassword();
+
+    @Key("elasticsearch.restClient.truststore.type")
+    String trustStoreType();
+
+    @Key("elasticsearch.restClient.keystore.path")
+    String keyStorePath();
+
+    @Key("elasticsearch.restClient.keystore.password")
+    String keyStorePassword();
+
+    @Key("elasticsearch.restClient.keystore.type")
+    String keyStoreType();
 
     /**
      * Limit the number of documents returned by Elasticsearch
