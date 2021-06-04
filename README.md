@@ -17,7 +17,7 @@ Download the `nuxeo-esync-VERSION-capsule-full.jar` from [https://maven.nuxeo.or
 
 | Esync Version | Nuxeo Version | Elasticsearch version|
 | --- | --- |--- |
-| 1.1.X| 7.10 | 1.5.2|
+| 1.2-SNAPSHOT| 7.10 | 1.5.2|
 | 2.0.X| 8.10 | 2.3.5|
 | 3.0.X| 9.10 | 5.6.4|
 | 4.0.X| 10.10 | 6.5.3|
